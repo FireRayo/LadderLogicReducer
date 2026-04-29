@@ -1,4 +1,4 @@
-# 🔧 Ladder Logic Reducer
+# 🔧 [Ladder Logic Reducer](https://firerayo.github.io/LadderLogicReducer/)
 
 Single-file HTML5 web application to capture, validate, minimize, and convert boolean logic tables into Ladder Logic compatible with LDmicro.
 
