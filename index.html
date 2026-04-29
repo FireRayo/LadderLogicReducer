@@ -1,0 +1,3449 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reductor booleano a Ladder LDmicro</title>
+  <style>
+    :root{
+      --bg:#0b1020;
+      --panel:#121933;
+      --panel-2:#1a2344;
+      --text:#e9eefc;
+      --muted:#a9b3d7;
+      --accent:#6ea8fe;
+      --ok:#31c48d;
+      --warn:#f59e0b;
+      --bad:#ef4444;
+      --line:#2d3b6d;
+      --chip:#0f1630;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      background:linear-gradient(180deg,#07101f 0%, #09152b 100%);
+      color:var(--text);
+      font-family:var(--sans);
+    }
+    header{
+      padding:20px 24px 10px;
+      border-bottom:1px solid rgba(255,255,255,.06);
+      background:rgba(4,9,20,.55);
+      position:sticky;
+      top:0;
+      backdrop-filter: blur(10px);
+      z-index:10;
+    }
+    h1{
+      margin:0 0 8px;
+      font-size:1.5rem;
+      line-height:1.2;
+    }
+    p.lead{
+      margin:0;
+      color:var(--muted);
+      max-width:1100px;
+    }
+    main{
+      padding:18px 24px 36px;
+      display:grid;
+      gap:16px;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap:16px;
+      align-items:start;
+    }
+    @media (max-width: 1100px){
+      .grid{ grid-template-columns:1fr; }
+    }
+    .card{
+      background:linear-gradient(180deg, rgba(18,25,51,.95), rgba(13,18,37,.95));
+      border:1px solid rgba(255,255,255,.07);
+      border-radius:18px;
+      padding:16px;
+      box-shadow:0 10px 30px rgba(0,0,0,.18);
+    }
+    .card h2{
+      margin:0 0 12px;
+      font-size:1.05rem;
+    }
+    .controls{
+      display:grid;
+      grid-template-columns: repeat(6, minmax(100px, 1fr));
+      gap:10px;
+      align-items:end;
+    }
+    @media (max-width: 900px){
+      .controls{ grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+    }
+    label{
+      display:block;
+      font-size:.86rem;
+      color:var(--muted);
+      margin-bottom:6px;
+    }
+    input[type="number"], textarea, select{
+      width:100%;
+      background:#0c132a;
+      color:var(--text);
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:10px 12px;
+      font:inherit;
+      outline:none;
+    }
+    input[type="number"]:focus, textarea:focus, select:focus{
+      border-color:var(--accent);
+      box-shadow:0 0 0 3px rgba(110,168,254,.15);
+    }
+    textarea{
+      min-height:130px;
+      resize:vertical;
+      font-family:var(--mono);
+      font-size:.9rem;
+      line-height:1.35;
+    }
+    .btn-row{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:12px;
+    }
+    button{
+      appearance:none;
+      border:none;
+      background:linear-gradient(180deg, #3b82f6, #2563eb);
+      color:white;
+      border-radius:12px;
+      padding:10px 14px;
+      font-weight:700;
+      cursor:pointer;
+      box-shadow:0 6px 18px rgba(37,99,235,.28);
+    }
+    button.secondary{
+      background:linear-gradient(180deg, #263454, #1a2646);
+      box-shadow:none;
+      border:1px solid rgba(255,255,255,.07);
+      color:var(--text);
+    }
+    button.warn{
+      background:linear-gradient(180deg, #f59e0b, #d97706);
+      box-shadow:0 6px 18px rgba(217,119,6,.22);
+    }
+    button:disabled{
+      opacity:.6;
+      cursor:not-allowed;
+    }
+    .muted{ color:var(--muted); }
+    .small{ font-size:.9rem; }
+    .tiny{ font-size:.82rem; }
+    .table-wrap{
+      overflow:auto;
+      border:1px solid rgba(255,255,255,.06);
+      border-radius:16px;
+      max-height:60vh;
+      background:#0a1021;
+    }
+    table{
+      width:max-content;
+      min-width:100%;
+      border-collapse:collapse;
+      font-family:var(--mono);
+      font-size:.9rem;
+    }
+    th, td{
+      border-bottom:1px solid rgba(255,255,255,.07);
+      border-right:1px solid rgba(255,255,255,.05);
+      text-align:center;
+      padding:0;
+    }
+    th{
+      position:sticky;
+      top:0;
+      z-index:2;
+      background:#111a35;
+      color:#dfe9ff;
+      padding:10px 8px;
+      font-weight:700;
+    }
+    td:first-child, th:first-child{
+      position:sticky;
+      left:0;
+      z-index:1;
+      background:#10182f;
+      min-width:54px;
+      font-weight:700;
+    }
+    th:first-child{ z-index:3; }
+    td .cell{
+      width:56px;
+      padding:9px 4px;
+      border:none;
+      background:transparent;
+      color:var(--text);
+      text-align:center;
+      font:inherit;
+      outline:none;
+      text-transform:uppercase;
+    }
+    td .cell.out{ text-transform:none; }
+    tr:hover td{
+      background:rgba(255,255,255,.02);
+    }
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:6px 10px;
+      border-radius:999px;
+      background:var(--chip);
+      border:1px solid rgba(255,255,255,.07);
+      color:var(--muted);
+      font-size:.82rem;
+      margin:0 6px 6px 0;
+    }
+    .pill.ok{ color:#d8fff0; border-color:rgba(49,196,141,.35); }
+    .pill.warn{ color:#fff2d8; border-color:rgba(245,158,11,.35); }
+    .pill.bad{ color:#ffe1e1; border-color:rgba(239,68,68,.35); }
+    .result-block{
+      display:grid;
+      gap:12px;
+    }
+    .section-title{
+      margin:6px 0 6px;
+      font-size:.95rem;
+      color:#cfe0ff;
+    }
+    pre{
+      margin:0;
+      white-space:pre-wrap;
+      word-break:break-word;
+      background:#0a1021;
+      border:1px solid rgba(255,255,255,.06);
+      border-radius:14px;
+      padding:14px;
+      font-family:var(--mono);
+      line-height:1.35;
+      overflow:auto;
+    }
+    .status{
+      padding:12px;
+      border-radius:14px;
+      background:#0a1021;
+      border:1px solid rgba(255,255,255,.06);
+    }
+    .status.ok{ border-color:rgba(49,196,141,.35); }
+    .status.warn{ border-color:rgba(245,158,11,.35); }
+    .status.bad{ border-color:rgba(239,68,68,.35); }
+    .kpis{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+    }
+    .kpi{
+      flex:1 1 140px;
+      min-width:140px;
+      background:#0a1021;
+      border:1px solid rgba(255,255,255,.06);
+      border-radius:14px;
+      padding:12px;
+    }
+    .kpi .value{
+      font-size:1.15rem;
+      font-weight:800;
+      margin-top:6px;
+    }
+    .mapping-list{
+      display:grid;
+      grid-template-columns:repeat(auto-fit, minmax(220px,1fr));
+      gap:10px;
+    }
+    .mapping-item{
+      background:#0a1021;
+      border:1px solid rgba(255,255,255,.06);
+      border-radius:12px;
+      padding:10px 12px;
+      font-family:var(--mono);
+      font-size:.9rem;
+    }
+    .footer-note{
+      color:var(--muted);
+      font-size:.85rem;
+      margin-top:8px;
+    }
+    details{
+      background:#0a1021;
+      border:1px solid rgba(255,255,255,.06);
+      border-radius:14px;
+      padding:10px 12px;
+    }
+    summary{
+      cursor:pointer;
+      font-weight:700;
+    }
+
+    .ladder-visual-wrap{
+      display:grid;
+      gap:12px;
+    }
+    .ladder-placeholder{
+      margin:0;
+      padding:14px;
+      border-radius:14px;
+      background:#0a1021;
+      border:1px solid rgba(255,255,255,.06);
+      color:var(--muted);
+      font-family:var(--mono);
+      white-space:pre-wrap;
+    }
+    .ladder-rung-card{
+      background:#08101f;
+      border:1px solid rgba(255,255,255,.07);
+      border-radius:14px;
+      padding:12px;
+    }
+    .ladder-rung-head{
+      display:flex;
+      flex-wrap:wrap;
+      justify-content:space-between;
+      gap:8px;
+      margin-bottom:8px;
+      align-items:baseline;
+    }
+    .ladder-rung-title{
+      font-weight:800;
+      color:#e8efff;
+    }
+    .ladder-rung-meta{
+      font-size:.82rem;
+      color:var(--muted);
+      font-family:var(--mono);
+    }
+    .ladder-rung-expression{
+      margin:0 0 10px;
+      color:#cdd8f7;
+      font-size:.88rem;
+      line-height:1.45;
+      font-family:var(--mono);
+      white-space:pre-wrap;
+      word-break:break-word;
+    }
+    .ladder-svg-scroll{
+      overflow:auto;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.06);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01)),
+        repeating-linear-gradient(0deg, rgba(255,255,255,.018) 0, rgba(255,255,255,.018) 1px, transparent 1px, transparent 26px),
+        repeating-linear-gradient(90deg, rgba(255,255,255,.014) 0, rgba(255,255,255,.014) 1px, transparent 1px, transparent 26px),
+        #07101d;
+      padding:10px;
+    }
+    .ladder-svg{
+      display:block;
+      font-family:var(--sans);
+    }
+    .ladder-svg .wire,
+    .ladder-svg .rail,
+    .ladder-svg .contact,
+    .ladder-svg .coil{
+      stroke:#e7eefc;
+      stroke-width:2.2;
+      fill:none;
+      stroke-linecap:round;
+      stroke-linejoin:round;
+    }
+    .ladder-svg .bus{
+      stroke:#9ec1ff;
+      stroke-width:2.4;
+      fill:none;
+      stroke-linecap:round;
+      stroke-linejoin:round;
+    }
+    .ladder-svg .open-gap{
+      stroke:#f59e0b;
+      stroke-width:2.2;
+      fill:none;
+      stroke-linecap:round;
+    }
+    .ladder-svg .label{
+      fill:#dbe7ff;
+      font-size:12px;
+      font-weight:700;
+      text-anchor:middle;
+    }
+    .ladder-svg .rung-name{
+      fill:#9ec1ff;
+      font-size:13px;
+      font-weight:800;
+    }
+    .ladder-svg .coil-label{
+      fill:#e8efff;
+      font-size:12px;
+      font-weight:800;
+      text-anchor:middle;
+      dominant-baseline:middle;
+    }
+
+    .header-top{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:16px;
+    }
+    .header-actions{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      margin-top:2px;
+      flex-shrink:0;
+    }
+    .lang-switch{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 10px;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:12px;
+      background:rgba(12,19,42,.9);
+    }
+    .lang-switch label{
+      margin:0;
+      color:var(--muted);
+      font-size:.82rem;
+      white-space:nowrap;
+    }
+    .lang-switch select{
+      width:auto;
+      min-width:120px;
+      padding:8px 10px;
+      border-radius:10px;
+    }
+    .about-btn{
+      padding:9px 14px;
+      border-radius:12px;
+      white-space:nowrap;
+    }
+    .modal-backdrop{
+      position:fixed;
+      inset:0;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding:24px;
+      background:rgba(3,8,20,.72);
+      z-index:40;
+    }
+    .modal-backdrop.show{
+      display:flex;
+    }
+    .modal-card{
+      width:min(460px, 100%);
+      background:linear-gradient(180deg, rgba(18,25,51,.98), rgba(13,18,37,.98));
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:18px;
+      box-shadow:0 20px 50px rgba(0,0,0,.34);
+      overflow:hidden;
+    }
+    .modal-card header{
+      position:static;
+      padding:16px 18px 10px;
+      border-bottom:1px solid rgba(255,255,255,.06);
+      background:transparent;
+      backdrop-filter:none;
+    }
+    .modal-card h3{
+      margin:0;
+      font-size:1.05rem;
+    }
+    .modal-card .body{
+      padding:16px 18px 18px;
+    }
+    .modal-card .body pre{
+      margin:0;
+      white-space:pre-wrap;
+    }
+    .modal-card .btn-row{
+      margin-top:14px;
+      justify-content:flex-end;
+    }
+    @media (max-width: 820px){
+      .header-top{
+        flex-direction:column;
+      }
+      .header-actions{
+        width:100%;
+        justify-content:flex-end;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-top">
+      <div>
+        <h1 id="appTitle">Reductor booleano → Ladder LDmicro</h1>
+        <p id="appLead" class="lead">
+          Aplicación HTML5 de archivo único para capturar tablas lógicas, validar consistencia, minimizar cada salida y exportar
+          la lógica en ASCII y en un archivo <code>.ld</code> de estilo LDmicro. La interfaz puede trabajar con encabezados importados
+          como <b>X1..Xn / Z1..Zn</b> o con nombres por defecto <b>E1..En / S1..Sn</b>, y la exportación <code>.ld</code> usa alias compatibles con LDmicro.
+        </p>
+      </div>
+      <div class="header-actions">
+        <div class="lang-switch">
+          <label id="langLabel" for="langSelect">Idioma</label>
+          <select id="langSelect">
+            <option value="es">Español</option>
+            <option value="en">English</option>
+            <option value="it">Italiano</option>
+          </select>
+        </div>
+        <!-- Botón Acerca de: muestra versión y autor sin afectar la lógica de la app. -->
+        <button id="aboutBtn" type="button" class="secondary about-btn">Acerca de</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Ventana modal informativa: solo texto con versión y autor. -->
+  <div id="aboutModal" class="modal-backdrop" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="aboutTitle">
+      <header>
+        <h3 id="aboutTitle">Acerca de</h3>
+      </header>
+      <div class="body">
+        <pre id="aboutBody">Versión: v16
+Autor: OpenAI - ChatGPT</pre>
+        <div class="btn-row">
+          <button id="aboutCloseBtn" type="button" class="secondary">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <main>
+    <div class="grid">
+      <section class="card">
+        <h2>1) Tabla lógica</h2>
+
+        <div class="controls">
+          <div>
+            <label for="numInputs">Entradas</label>
+            <input id="numInputs" type="number" min="1" max="100" value="4">
+          </div>
+          <div>
+            <label for="numOutputs">Salidas</label>
+            <input id="numOutputs" type="number" min="1" max="20" value="2">
+          </div>
+          <div>
+            <label for="rowCount">Filas iniciales</label>
+            <input id="rowCount" type="number" min="1" max="5000" value="8">
+          </div>
+          <div>
+            <label for="logicMode">Interpretación de filas</label>
+            <select id="logicMode">
+              <option value="industrial" selected>Industrial flexible (recomendado)</option>
+              <option value="strict">Tabla estricta ON/OFF</option>
+            </select>
+          </div>
+          <div>
+            <label for="cycleTime">CYCLE (µs)</label>
+            <input id="cycleTime" type="number" min="1000" max="1000000" value="10000">
+          </div>
+          <div>
+            <label for="crystal">CRYSTAL (Hz)</label>
+            <input id="crystal" type="number" min="1" max="100000000" value="4000000">
+          </div>
+          <div>
+            <label for="baud">BAUD</label>
+            <input id="baud" type="number" min="0" max="1000000" value="2400">
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button id="buildBtn">Aplicar dimensiones</button>
+          <button class="secondary" id="addRowBtn">Agregar fila</button>
+          <button class="secondary" id="removeRowBtn">Quitar última fila</button>
+          <button class="secondary" id="loadExampleBtn">Cargar ejemplo</button>
+          <button class="warn" id="clearBtn">Restablecer</button>
+        </div>
+
+        <div class="table-wrap" style="margin-top:14px;">
+          <table id="truthTable"></table>
+        </div>
+
+        <p class="footer-note">
+          Reglas: entradas aceptan <b>1</b>, <b>0</b>, <b>X</b>, <b>x</b> o vacío; salidas solo <b>1</b> o <b>0</b>.
+          Las entradas se inicializan en <b>X</b> y las salidas en <b>0</b>. Si importas encabezados, la app conserva sus nombres.
+        </p>
+      </section>
+
+      <section class="card">
+        <h2>2) Importación y acciones</h2>
+        <label for="pasteArea">Pegar tabla TSV/Excel</label>
+        <textarea id="pasteArea" placeholder="Puedes pegar una tabla copiada desde Excel o LibreOffice.
+Con encabezados: X1 X2 ... Z1 Z2, o E1 E2 ... S1 S2.
+Sin encabezados: usa las dimensiones actuales de la app."></textarea>
+        <div class="btn-row">
+          <button id="importBtn">Importar tabla pegada</button>
+          <button class="secondary" id="exportTableBtn">Descargar tabla TSV</button>
+          <button id="analyzeBtn">Minimizar y generar Ladder</button>
+          <button class="secondary" id="downloadTxtBtn" disabled>Descargar TXT</button>
+          <button class="secondary" id="downloadLdBtn" disabled>Descargar LD</button>
+        </div>
+
+        <div style="margin-top:16px;">
+          <div class="kpis">
+            <div class="kpi">
+              <div class="muted tiny">Modo de minimización</div>
+              <div class="value" id="modeKpi">—</div>
+            </div>
+            <div class="kpi">
+              <div class="muted tiny">Rungs lógicos</div>
+              <div class="value" id="rungsKpi">—</div>
+            </div>
+            <div class="kpi">
+              <div class="muted tiny">Contactos totales</div>
+              <div class="value" id="contactsKpi">—</div>
+            </div>
+          </div>
+        </div>
+
+        <details style="margin-top:16px;">
+          <summary>Notas técnicas importantes</summary>
+          <div class="small muted" style="margin-top:10px; line-height:1.5;">
+            <p><b>Modo industrial flexible:</b> pensado para tablas de condiciones como las que usas en campo. Para cada salida,
+            solo las filas con valor <b>1</b> aportan lógica a esa salida. Las filas con <b>0</b> no se tratan como prohibiciones globales
+            y por eso no disparan falsos conflictos ON/OFF cuando la tabla es una lista de activación y no una tabla de verdad exhaustiva.</p>
+            <p><b>Modo tabla estricta ON/OFF:</b> interpreta cada fila con salida 0 como una condición OFF explícita. Ese modo sí detecta
+            solapamientos entre 1 y 0 y es el adecuado cuando realmente estás describiendo una tabla de verdad completa.</p>
+            <p><b>Minimización:</b> la app trabaja sobre cubos lógicos, elimina redundancias, absorbe términos y fusiona implicantes.
+            En modo estricto evita invadir estados marcados como 0. En modo industrial prioriza cubrir exactamente las condiciones ON declaradas.</p>
+            <p><b>Exportación LDmicro:</b> para favorecer compatibilidad con LDmicro, el archivo <code>.ld</code> usa alias compatibles
+            con el tipo de variable. Si importas <code>X1..Xn</code> y <code>Z1..Zn</code>, la app conserva esos nombres en pantalla y exporta
+            bobinas tipo <code>YZ1..YZn</code>.</p>
+          </div>
+        </details>
+      </section>
+    </div>
+
+    <section class="card">
+      <h2>3) Resultado</h2>
+      <div id="statusArea" class="status warn">Aún no se ha ejecutado el análisis.</div>
+
+      <div class="result-block" style="margin-top:14px;">
+        <div>
+          <div class="section-title">Expresiones mínimas / razonablemente mínimas</div>
+          <pre id="expressionsPre">—</pre>
+        </div>
+        <div>
+          <div class="section-title">Vista Ladder ASCII</div>
+          <pre id="asciiPre">—</pre>
+        </div>
+
+        <div>
+          <div class="section-title">Vista Ladder visual estilo LDmicro</div>
+          <div id="ladderVisualArea" class="ladder-visual-wrap">
+            <div class="ladder-placeholder">—</div>
+          </div>
+        </div>
+        <div>
+          <div class="section-title">Contenido del archivo .LD</div>
+          <pre id="ldPre">—</pre>
+        </div>
+        <div>
+          <div class="section-title">Consistencia y mapeo E/S</div>
+          <div id="consistencyArea" class="status">—</div>
+          <div id="mappingArea" class="mapping-list" style="margin-top:12px;"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    "use strict";
+
+    /**
+     * Estado global de la aplicación.
+     * Se mantiene deliberadamente simple para que el archivo siga siendo fácil de auditar.
+     */
+    const appState = {
+      numInputs: 4,
+      numOutputs: 2,
+      inputLabels: ["E1","E2","E3","E4"],
+      outputLabels: ["S1","S2"],
+      rows: [],
+      lastResult: null,
+      lang: "es"
+    };
+
+    /**
+     * Metadatos visibles de la aplicación.
+     * Se concentran aquí para que la ventana "Acerca de" sea fácil de actualizar.
+     */
+    const APP_VERSION = "V1.0";
+    const APP_AUTHOR = "Raymundo Ortiz";
+
+    /**
+     * Utilidad para obtener nodos del DOM.
+     */
+    const $ = (id) => document.getElementById(id);
+
+    /**
+     * Referencias de interfaz.
+     */
+    const ui = {
+      numInputs: $("numInputs"),
+      numOutputs: $("numOutputs"),
+      rowCount: $("rowCount"),
+      logicMode: $("logicMode"),
+      cycleTime: $("cycleTime"),
+      crystal: $("crystal"),
+      baud: $("baud"),
+      table: $("truthTable"),
+      pasteArea: $("pasteArea"),
+      buildBtn: $("buildBtn"),
+      addRowBtn: $("addRowBtn"),
+      removeRowBtn: $("removeRowBtn"),
+      clearBtn: $("clearBtn"),
+      loadExampleBtn: $("loadExampleBtn"),
+      importBtn: $("importBtn"),
+      analyzeBtn: $("analyzeBtn"),
+      exportTableBtn: $("exportTableBtn"),
+      downloadTxtBtn: $("downloadTxtBtn"),
+      downloadLdBtn: $("downloadLdBtn"),
+      statusArea: $("statusArea"),
+      expressionsPre: $("expressionsPre"),
+      asciiPre: $("asciiPre"),
+      ladderVisualArea: $("ladderVisualArea"),
+      ldPre: $("ldPre"),
+      consistencyArea: $("consistencyArea"),
+      mappingArea: $("mappingArea"),
+      modeKpi: $("modeKpi"),
+      rungsKpi: $("rungsKpi"),
+      contactsKpi: $("contactsKpi"),
+      langSelect: $("langSelect"),
+      aboutBtn: $("aboutBtn"),
+      aboutModal: $("aboutModal"),
+      aboutTitle: $("aboutTitle"),
+      aboutBody: $("aboutBody"),
+      aboutCloseBtn: $("aboutCloseBtn")
+    };
+
+    const I18N = {
+      es: {
+        appTitleDoc: "Ladder Logic Reducer",
+        appTitle: "Ladder Logic Reducer",
+        appLeadHTML: "LadderLogicReducer es un convertidor de tabla de verdad booleana a Ladder Logic para PLCs. Optimiza y simplifica la tabla de verdad y genera Ladder Logic en formato ASCII, así como un archivo descargable .ld compatible con LDmicro ([https://cq.cx/ladder.pl](https://cq.cx/ladder.pl)). La interfaz acepta tablas importadas en formato ODT o EXCEL con el formato X1..Xn / Z1..Zn o nombres predeterminados E1..En / S1..Sn. La exportación .ld utiliza alias compatibles con LDmicro para asegurar su funcionamiento.",
+        langLabel: "Idioma",
+        aboutBtn: "Acerca de",
+        aboutTitle: "Acerca de",
+        aboutClose: "Cerrar",
+        aboutVersionLabel: "Versión",
+        aboutAuthorLabel: "Autor",
+        section1: "1) Tabla lógica",
+        section2: "2) Importación y acciones",
+        section3: "3) Resultado",
+        labelInputs: "Entradas",
+        labelOutputs: "Salidas",
+        labelInitialRows: "Filas iniciales",
+        labelLogicMode: "Interpretación de filas",
+        modeIndustrial: "Industrial flexible (recomendado)",
+        modeStrict: "Tabla estricta ON/OFF",
+        btnApplyDimensions: "Aplicar dimensiones",
+        btnAddRow: "Agregar fila",
+        btnRemoveLastRow: "Quitar última fila",
+        btnLoadExample: "Cargar ejemplo",
+        btnReset: "Restablecer",
+        rulesHTML: "Reglas: entradas aceptan <b>1</b>, <b>0</b>, <b>X</b>, <b>x</b> o vacío; salidas solo <b>1</b> o <b>0</b>. Las entradas se inicializan en <b>X</b> y las salidas en <b>0</b>. Si importas encabezados, la app conserva sus nombres.",
+        labelPaste: "Pegar tabla TSV/Excel",
+        pastePlaceholder: "Puedes pegar una tabla copiada desde Excel o LibreOffice.\nCon encabezados: X1 X2 ... Z1 Z2, o E1 E2 ... S1 S2.\nSin encabezados: usa las dimensiones actuales de la app.",
+        btnImport: "Importar tabla pegada",
+        btnDownloadTSV: "Descargar tabla TSV",
+        btnAnalyze: "Minimizar y generar Ladder",
+        btnDownloadTXT: "Descargar TXT",
+        btnDownloadLD: "Descargar LD",
+        kpiMode: "Modo de minimización",
+        kpiRungs: "Rungs lógicos",
+        kpiContacts: "Contactos totales",
+        summaryNotes: "Notas técnicas importantes",
+        note1HTML: "<p><b>Modo industrial flexible:</b> pensado para tablas de condiciones como las que usas en campo. Para cada salida, solo las filas con valor <b>1</b> aportan lógica a esa salida. Las filas con <b>0</b> no se tratan como prohibiciones globales y por eso no disparan falsos conflictos ON/OFF cuando la tabla es una lista de activación y no una tabla de verdad exhaustiva.</p>",
+        note2HTML: "<p><b>Modo tabla estricta ON/OFF:</b> interpreta cada fila con salida 0 como una condición OFF explícita. Ese modo sí detecta solapamientos entre 1 y 0 y es el adecuado cuando realmente estás describiendo una tabla de verdad completa.</p>",
+        note3HTML: "<p><b>Minimización:</b> la app trabaja sobre cubos lógicos, elimina redundancias, absorbe términos y fusiona implicantes. En modo estricto evita invadir estados marcados como 0. En modo industrial prioriza cubrir exactamente las condiciones ON declaradas.</p>",
+        note4HTML: "<p><b>Exportación LDmicro:</b> para favorecer compatibilidad con LDmicro, el archivo <code>.ld</code> usa alias compatibles con el tipo de variable. Si importas <code>X1..Xn</code> y <code>Z1..Zn</code>, la app conserva esos nombres en pantalla y exporta bobinas tipo <code>YZ1..YZn</code>.</p>",
+        statusNotRun: "Aún no se ha ejecutado el análisis.",
+        sectionExpressions: "Expresiones mínimas / razonablemente mínimas",
+        sectionAscii: "Vista Ladder ASCII",
+        sectionVisual: "Vista Ladder visual estilo LDmicro",
+        sectionLd: "Contenido del archivo .LD",
+        sectionConsistency: "Consistencia y mapeo E/S",
+        placeholderDash: "—",
+        statusChanged: "La tabla o el modo de interpretación cambió. Ejecuta nuevamente la minimización.",
+        alertNoTextImport: "No hay texto para importar.",
+        alertNoValidRowsImport: "No hay filas válidas para importar.",
+        alertHeaderNoOutputs: "Se detectó una fila de encabezados, pero no se localizaron columnas de salida (S/Z/Y).",
+        alertTableNoMatch: "La tabla sin encabezados no coincide con las dimensiones actuales. Ajusta entradas/salidas o pega encabezados.",
+        alertInvalidValueRow: "Valor inválido detectado en la fila {row}.",
+        alertNoDataRows: "No se encontraron filas de datos.",
+        modeSemIndustrial: "industrial",
+        modeSemStrict: "estricto",
+        modeAlgExact: "exacto",
+        modeAlgScalable: "escalable",
+        modeAlgFlexible: "cobertura flexible",
+        conflictLine: "- Solapamiento inválido entre fila con salida=1 ({positiveRow}) y fila con salida=0 ({negativeRow}).",
+        duplicateConflictLine: "- Filas {rowA} y {rowB}: patrón de entradas idéntico con valor contradictorio en {output} ({valueA} vs {valueB}).",
+        statusDuplicateConflict: "Se encontraron filas duplicadas con salidas contradictorias. Corrige la tabla antes de minimizar.",
+        noLadderDuplicate: "No se generó Ladder por filas duplicadas contradictorias.",
+        noVisualDuplicate: "No se generó vista Ladder por filas duplicadas contradictorias.",
+        noLdDuplicate: "No se generó archivo .ld por filas duplicadas contradictorias.",
+        consistencyDuplicate: "Tabla inconsistente: existen filas con el mismo patrón de entradas y salidas contradictorias.",
+        coverageConflictLine: "- Filas {rowA} y {rowB}: una condición más general cubre otra más específica con valor contradictorio en {output} (fila {broaderRow} cubre fila {narrowerRow}: {broaderValue} vs {narrowerValue}).",
+        statusCoverageConflict: "Se encontraron reglas ambiguas: una fila más general cubre otra más específica con una salida contradictoria. Corrige la tabla antes de minimizar.",
+        noLadderCoverage: "No se generó Ladder por reglas ambiguas entre filas generales y específicas.",
+        noVisualCoverage: "No se generó vista Ladder por reglas ambiguas entre filas generales y específicas.",
+        noLdCoverage: "No se generó archivo .ld por reglas ambiguas entre filas generales y específicas.",
+        consistencyCoverage: "Tabla inconsistente: existe al menos una fila general que cubre otra más específica con un valor de salida contradictorio.",
+        readingOpen: "circuito abierto",
+        readingDirect: "cable directo",
+        readingSeries: " en serie con ",
+        readingParallelPrefix: "un paralelo: ",
+        asciiOpen: "CIRCUITO_ABIERTO",
+        asciiDirect: "CABLE_DIRECTO",
+        asciiSeries: "SERIE",
+        asciiParallel: "PARALELO",
+        asciiBranch: "Rama",
+        rungOf: "Rung de {output}",
+        readingLabel: "Lectura: {reading}.",
+        visualRungTitle: "Rung {index} — {output}",
+        errorLogicalConflicts: "{output}: se detectaron conflictos lógicos.\n{details}",
+        statusStrictConflict: "Se encontraron conflictos ON/OFF. Cambia a modo industrial flexible si tu tabla es una lista de condiciones y no una tabla de verdad estricta.",
+        noLadderStrict: "No se generó Ladder por inconsistencias del modo estricto.",
+        noVisualStrict: "No se generó vista Ladder por inconsistencias del modo estricto.",
+        noLdStrict: "No se generó archivo .ld por inconsistencias del modo estricto.",
+        consistencyStrict: "Tabla inconsistente para el modo estricto: existen solapamientos entre filas con salida 1 y 0.",
+        warningScalable: "{output}: se usó el modo escalable por dimensión elevada.",
+        statusCompletedWarnings: "Análisis completado con advertencias. {warnings}",
+        statusCompletedIndustrial: "Análisis completado en modo industrial flexible. La lógica se minimizó y luego se factorizó para Ladder, reduciendo contactos repetidos y extrayendo factores comunes.",
+        statusCompletedStrict: "Análisis completado correctamente en modo tabla estricta ON/OFF.",
+        consistencyOk: "Verificación interna: salidas visibles {outputs}, bobinas exportadas {coils}, 0 relés internos auxiliares y misma base de cubos para pantalla/TXT/LD.",
+        mappingInput: "Entrada: {label}  →  {alias}",
+        mappingOutput: "Salida : {label}  →  {alias}",
+        txtTitle: "REDUCTOR BOOLEANO A LADDER",
+        txtSummary: "RESUMEN:",
+        txtInputs: "- Entradas: {value}",
+        txtOutputs: "- Salidas: {value}",
+        txtRows: "- Filas capturadas: {value}",
+        txtMode: "- Modo: {value}",
+        txtExpressions: "EXPRESIONES:",
+        txtAscii: "LADDER ASCII:",
+        txtLdPerRung: "CÓDIGO LADDER LDMICRO POR RUNG (EXACTO):",
+        txtMapping: "MAPEO LDmicro:",
+        txtVerification: "VERIFICACIÓN:",
+        txtVisibleOutputs: "- Salidas lógicas visibles: {value}",
+        txtExportedCoils: "- Bobinas exportadas: {value}",
+        txtNoExtraCoils: "- No se generan bobinas auxiliares adicionales.",
+        txtNoExtraRelays: "- No se generan relés internos adicionales.",
+        txtSameSerializer: "- El bloque 'CÓDIGO LADDER LDMICRO POR RUNG (EXACTO)' y el bloque 'ARCHIVO LD COMPLETO (EXACTO)' se generan desde el mismo serializador usado para exportar el .ld.",
+        txtLdFull: "ARCHIVO LD COMPLETO (EXACTO):"
+      },
+      en: {
+        appTitleDoc: "Ladder Logic Reducer",
+        appTitle: "Ladder Logic Reducer",
+        appLeadHTML: "LadderLogicReducer is a boolean truth table to Ladder Logic converter for PLCs. It optimizes and simplifies the truth table and generates Ladder Logic in ASCII format, as well as a downloadable .ld file compatible with LDmicro ([https://cq.cx/ladder.pl](https://cq.cx/ladder.pl)). The interface accepts tables imported in ODT or EXCEL format with the structure X1..Xn / Z1..Zn or default names E1..En / S1..Sn. The .ld export uses aliases compatible with LDmicro to ensure proper operation.",
+        langLabel: "Language",
+        aboutBtn: "About",
+        aboutTitle: "About",
+        aboutClose: "Close",
+        aboutVersionLabel: "Version",
+        aboutAuthorLabel: "Author",
+        section1: "1) Logic table",
+        section2: "2) Import and actions",
+        section3: "3) Result",
+        labelInputs: "Inputs",
+        labelOutputs: "Outputs",
+        labelInitialRows: "Initial rows",
+        labelLogicMode: "Row interpretation",
+        modeIndustrial: "Flexible industrial (recommended)",
+        modeStrict: "Strict ON/OFF table",
+        btnApplyDimensions: "Apply dimensions",
+        btnAddRow: "Add row",
+        btnRemoveLastRow: "Remove last row",
+        btnLoadExample: "Load example",
+        btnReset: "Reset",
+        rulesHTML: "Rules: inputs accept <b>1</b>, <b>0</b>, <b>X</b>, <b>x</b>, or blank; outputs accept only <b>1</b> or <b>0</b>. Inputs are initialized to <b>X</b> and outputs to <b>0</b>. If you import headers, the app preserves their names.",
+        labelPaste: "Paste TSV/Excel table",
+        pastePlaceholder: "You can paste a table copied from Excel or LibreOffice.\nWith headers: X1 X2 ... Z1 Z2, or E1 E2 ... S1 S2.\nWithout headers: use the current app dimensions.",
+        btnImport: "Import pasted table",
+        btnDownloadTSV: "Download TSV table",
+        btnAnalyze: "Minimize and generate Ladder",
+        btnDownloadTXT: "Download TXT",
+        btnDownloadLD: "Download LD",
+        kpiMode: "Minimization mode",
+        kpiRungs: "Logic rungs",
+        kpiContacts: "Total contacts",
+        summaryNotes: "Important technical notes",
+        note1HTML: "<p><b>Flexible industrial mode:</b> intended for condition tables like the ones you use in the field. For each output, only rows with value <b>1</b> contribute logic to that output. Rows with <b>0</b> are not treated as global prohibitions, so they do not trigger false ON/OFF conflicts when the table is an activation list rather than a complete truth table.</p>",
+        note2HTML: "<p><b>Strict ON/OFF table mode:</b> interprets each row with output 0 as an explicit OFF condition. This mode does detect overlaps between 1 and 0 and is appropriate when you are actually describing a complete truth table.</p>",
+        note3HTML: "<p><b>Minimization:</b> the app works on logic cubes, removes redundancies, absorbs terms, and merges implicants. In strict mode it avoids invading states marked as 0. In industrial mode it prioritizes covering the declared ON conditions exactly.</p>",
+        note4HTML: "<p><b>LDmicro export:</b> to improve compatibility with LDmicro, the <code>.ld</code> file uses aliases compatible with the variable type. If you import <code>X1..Xn</code> and <code>Z1..Zn</code>, the app preserves those names on screen and exports <code>YZ1..YZn</code>-type coils.</p>",
+        statusNotRun: "Analysis has not been run yet.",
+        sectionExpressions: "Minimum / reasonably minimum expressions",
+        sectionAscii: "ASCII Ladder view",
+        sectionVisual: "LDmicro-style visual Ladder view",
+        sectionLd: "Contents of the .LD file",
+        sectionConsistency: "Consistency and I/O mapping",
+        placeholderDash: "—",
+        statusChanged: "The table or row interpretation mode changed. Run minimization again.",
+        alertNoTextImport: "There is no text to import.",
+        alertNoValidRowsImport: "There are no valid rows to import.",
+        alertHeaderNoOutputs: "A header row was detected, but no output columns (S/Z/Y) were found.",
+        alertTableNoMatch: "The table without headers does not match the current dimensions. Adjust inputs/outputs or paste headers.",
+        alertInvalidValueRow: "Invalid value detected in row {row}.",
+        alertNoDataRows: "No data rows were found.",
+        modeSemIndustrial: "industrial",
+        modeSemStrict: "strict",
+        modeAlgExact: "exact",
+        modeAlgScalable: "scalable",
+        modeAlgFlexible: "flexible cover",
+        conflictLine: "- Invalid overlap between row with output=1 ({positiveRow}) and row with output=0 ({negativeRow}).",
+        duplicateConflictLine: "- Rows {rowA} and {rowB}: identical input pattern with contradictory value in {output} ({valueA} vs {valueB}).",
+        statusDuplicateConflict: "Duplicate rows with contradictory outputs were found. Fix the table before minimizing.",
+        noLadderDuplicate: "No Ladder was generated because of contradictory duplicate rows.",
+        noVisualDuplicate: "No Ladder view was generated because of contradictory duplicate rows.",
+        noLdDuplicate: "No .ld file was generated because of contradictory duplicate rows.",
+        consistencyDuplicate: "Inconsistent table: there are rows with the same input pattern and contradictory outputs.",
+        coverageConflictLine: "- Rows {rowA} and {rowB}: a more general condition covers a more specific one with a contradictory value in {output} (row {broaderRow} covers row {narrowerRow}: {broaderValue} vs {narrowerValue}).",
+        statusCoverageConflict: "Ambiguous rules were found: a more general row covers a more specific one with a contradictory output. Fix the table before minimizing.",
+        noLadderCoverage: "No Ladder was generated because of ambiguous rules between general and specific rows.",
+        noVisualCoverage: "No Ladder view was generated because of ambiguous rules between general and specific rows.",
+        noLdCoverage: "No .ld file was generated because of ambiguous rules between general and specific rows.",
+        consistencyCoverage: "Inconsistent table: at least one general row covers a more specific one with a contradictory output value.",
+        readingOpen: "open circuit",
+        readingDirect: "direct wire",
+        readingSeries: " in series with ",
+        readingParallelPrefix: "a parallel of: ",
+        asciiOpen: "OPEN_CIRCUIT",
+        asciiDirect: "DIRECT_WIRE",
+        asciiSeries: "SERIES",
+        asciiParallel: "PARALLEL",
+        asciiBranch: "Branch",
+        rungOf: "Rung for {output}",
+        readingLabel: "Reading: {reading}.",
+        visualRungTitle: "Rung {index} — {output}",
+        errorLogicalConflicts: "{output}: logical conflicts were detected.\n{details}",
+        statusStrictConflict: "ON/OFF conflicts were found. Switch to flexible industrial mode if your table is a condition list and not a strict truth table.",
+        noLadderStrict: "No Ladder was generated due to strict-mode inconsistencies.",
+        noVisualStrict: "No Ladder view was generated due to strict-mode inconsistencies.",
+        noLdStrict: "No .ld file was generated due to strict-mode inconsistencies.",
+        consistencyStrict: "Inconsistent table for strict mode: there are overlaps between rows with output 1 and 0.",
+        warningScalable: "{output}: scalable mode was used due to large dimensions.",
+        statusCompletedWarnings: "Analysis completed with warnings. {warnings}",
+        statusCompletedIndustrial: "Analysis completed in flexible industrial mode. The logic was minimized and then factored for Ladder, reducing repeated contacts and extracting common factors.",
+        statusCompletedStrict: "Analysis completed correctly in strict ON/OFF table mode.",
+        consistencyOk: "Internal verification: visible outputs {outputs}, exported coils {coils}, 0 extra auxiliary relays, and the same cube base for screen/TXT/LD.",
+        mappingInput: "Input: {label}  →  {alias}",
+        mappingOutput: "Output: {label}  →  {alias}",
+        txtTitle: "BOOLEAN REDUCER TO LADDER",
+        txtSummary: "SUMMARY:",
+        txtInputs: "- Inputs: {value}",
+        txtOutputs: "- Outputs: {value}",
+        txtRows: "- Captured rows: {value}",
+        txtMode: "- Mode: {value}",
+        txtExpressions: "EXPRESSIONS:",
+        txtAscii: "ASCII LADDER:",
+        txtLdPerRung: "LDMICRO LADDER CODE PER RUNG (EXACT):",
+        txtMapping: "LDmicro MAPPING:",
+        txtVerification: "VERIFICATION:",
+        txtVisibleOutputs: "- Visible logical outputs: {value}",
+        txtExportedCoils: "- Exported coils: {value}",
+        txtNoExtraCoils: "- No additional auxiliary coils are generated.",
+        txtNoExtraRelays: "- No additional internal relays are generated.",
+        txtSameSerializer: "- The 'LDMICRO LADDER CODE PER RUNG (EXACT)' block and the 'FULL LD FILE (EXACT)' block are generated from the same serializer used to export the .ld file.",
+        txtLdFull: "FULL LD FILE (EXACT):"
+      },
+      it: {
+        appTitleDoc: "Ladder Logic Reducer",
+        appTitle: "Ladder Logic Reducer",
+        appLeadHTML: "LadderLogicReducer è un convertitore da tabella di verità booleana a logica Ladder per PLC. Ottimizza e semplifica la tabella di verità e genera logica Ladder in formato ASCII, oltre a un file .ld scaricabile compatibile con LDmicro ([https://cq.cx/ladder.pl](https://cq.cx/ladder.pl)). L’interfaccia accetta tabelle importate in formato ODT o EXCEL con la struttura X1..Xn / Z1..Zn oppure con nomi predefiniti E1..En / S1..Sn. L’esportazione .ld utilizza alias compatibili con LDmicro per garantire il corretto funzionamento.",
+        langLabel: "Lingua",
+        aboutBtn: "Informazioni",
+        aboutTitle: "Informazioni",
+        aboutClose: "Chiudi",
+        aboutVersionLabel: "Versione",
+        aboutAuthorLabel: "Autore",
+        section1: "1) Tabella logica",
+        section2: "2) Importazione e azioni",
+        section3: "3) Risultato",
+        labelInputs: "Ingressi",
+        labelOutputs: "Uscite",
+        labelInitialRows: "Righe iniziali",
+        labelLogicMode: "Interpretazione delle righe",
+        modeIndustrial: "Industriale flessibile (consigliato)",
+        modeStrict: "Tabella ON/OFF rigorosa",
+        btnApplyDimensions: "Applica dimensioni",
+        btnAddRow: "Aggiungi riga",
+        btnRemoveLastRow: "Rimuovi ultima riga",
+        btnLoadExample: "Carica esempio",
+        btnReset: "Ripristina",
+        rulesHTML: "Regole: gli ingressi accettano <b>1</b>, <b>0</b>, <b>X</b>, <b>x</b> o vuoto; le uscite accettano solo <b>1</b> o <b>0</b>. Gli ingressi vengono inizializzati a <b>X</b> e le uscite a <b>0</b>. Se importi intestazioni, l'app mantiene i loro nomi.",
+        labelPaste: "Incolla tabella TSV/Excel",
+        pastePlaceholder: "Puoi incollare una tabella copiata da Excel o LibreOffice.\nCon intestazioni: X1 X2 ... Z1 Z2, oppure E1 E2 ... S1 S2.\nSenza intestazioni: usa le dimensioni correnti dell'app.",
+        btnImport: "Importa tabella incollata",
+        btnDownloadTSV: "Scarica tabella TSV",
+        btnAnalyze: "Minimizza e genera Ladder",
+        btnDownloadTXT: "Scarica TXT",
+        btnDownloadLD: "Scarica LD",
+        kpiMode: "Modalità di minimizzazione",
+        kpiRungs: "Rung logici",
+        kpiContacts: "Contatti totali",
+        summaryNotes: "Note tecniche importanti",
+        note1HTML: "<p><b>Modalità industriale flessibile:</b> pensata per tabelle di condizioni come quelle che usi sul campo. Per ogni uscita, solo le righe con valore <b>1</b> contribuiscono alla logica di quell'uscita. Le righe con <b>0</b> non vengono trattate come divieti globali, quindi non generano falsi conflitti ON/OFF quando la tabella è un elenco di attivazione e non una tabella della verità completa.</p>",
+        note2HTML: "<p><b>Modalità tabella ON/OFF rigorosa:</b> interpreta ogni riga con uscita 0 come una condizione OFF esplicita. Questa modalità rileva le sovrapposizioni tra 1 e 0 ed è adatta quando stai realmente descrivendo una tabella della verità completa.</p>",
+        note3HTML: "<p><b>Minimizzazione:</b> l'app lavora su cubi logici, elimina ridondanze, assorbe termini e fonde implicanti. In modalità rigorosa evita di invadere stati marcati come 0. In modalità industriale dà priorità alla copertura esatta delle condizioni ON dichiarate.</p>",
+        note4HTML: "<p><b>Esportazione LDmicro:</b> per favorire la compatibilità con LDmicro, il file <code>.ld</code> usa alias compatibili con il tipo di variabile. Se importi <code>X1..Xn</code> e <code>Z1..Zn</code>, l'app mantiene questi nomi a schermo ed esporta bobine di tipo <code>YZ1..YZn</code>.</p>",
+        statusNotRun: "L'analisi non è stata ancora eseguita.",
+        sectionExpressions: "Espressioni minime / ragionevolmente minime",
+        sectionAscii: "Vista Ladder ASCII",
+        sectionVisual: "Vista Ladder visiva stile LDmicro",
+        sectionLd: "Contenuto del file .LD",
+        sectionConsistency: "Consistenza e mappatura I/O",
+        placeholderDash: "—",
+        statusChanged: "La tabella o la modalità di interpretazione delle righe è cambiata. Esegui di nuovo la minimizzazione.",
+        alertNoTextImport: "Non c'è testo da importare.",
+        alertNoValidRowsImport: "Non ci sono righe valide da importare.",
+        alertHeaderNoOutputs: "È stata rilevata una riga di intestazione, ma non sono state trovate colonne di uscita (S/Z/Y).",
+        alertTableNoMatch: "La tabella senza intestazioni non corrisponde alle dimensioni correnti. Regola ingressi/uscite oppure incolla le intestazioni.",
+        alertInvalidValueRow: "Valore non valido rilevato nella riga {row}.",
+        alertNoDataRows: "Non sono state trovate righe di dati.",
+        modeSemIndustrial: "industriale",
+        modeSemStrict: "rigoroso",
+        modeAlgExact: "esatto",
+        modeAlgScalable: "scalabile",
+        modeAlgFlexible: "copertura flessibile",
+        conflictLine: "- Sovrapposizione non valida tra riga con uscita=1 ({positiveRow}) e riga con uscita=0 ({negativeRow}).",
+        duplicateConflictLine: "- Righe {rowA} e {rowB}: schema di ingressi identico con valore contraddittorio in {output} ({valueA} vs {valueB}).",
+        statusDuplicateConflict: "Sono state trovate righe duplicate con uscite contraddittorie. Correggi la tabella prima di minimizzare.",
+        noLadderDuplicate: "Nessun Ladder generato a causa di righe duplicate contraddittorie.",
+        noVisualDuplicate: "Nessuna vista Ladder generata a causa di righe duplicate contraddittorie.",
+        noLdDuplicate: "Nessun file .ld generato a causa di righe duplicate contraddittorie.",
+        consistencyDuplicate: "Tabella incoerente: esistono righe con lo stesso schema di ingressi e uscite contraddittorie.",
+        coverageConflictLine: "- Righe {rowA} e {rowB}: una condizione più generale copre una più specifica con valore contraddittorio in {output} (la riga {broaderRow} copre la riga {narrowerRow}: {broaderValue} vs {narrowerValue}).",
+        statusCoverageConflict: "Sono state trovate regole ambigue: una riga più generale copre una più specifica con un'uscita contraddittoria. Correggi la tabella prima di minimizzare.",
+        noLadderCoverage: "Nessun Ladder generato a causa di regole ambigue tra righe generali e specifiche.",
+        noVisualCoverage: "Nessuna vista Ladder generata a causa di regole ambigue tra righe generali e specifiche.",
+        noLdCoverage: "Nessun file .ld generato a causa di regole ambigue tra righe generali e specifiche.",
+        consistencyCoverage: "Tabella incoerente: almeno una riga generale copre una più specifica con un valore di uscita contraddittorio.",
+        readingOpen: "circuito aperto",
+        readingDirect: "cavo diretto",
+        readingSeries: " in serie con ",
+        readingParallelPrefix: "un parallelo di: ",
+        asciiOpen: "CIRCUITO_APERTO",
+        asciiDirect: "CAVO_DIRETTO",
+        asciiSeries: "SERIE",
+        asciiParallel: "PARALLELO",
+        asciiBranch: "Ramo",
+        rungOf: "Rung di {output}",
+        readingLabel: "Lettura: {reading}.",
+        visualRungTitle: "Rung {index} — {output}",
+        errorLogicalConflicts: "{output}: sono stati rilevati conflitti logici.\n{details}",
+        statusStrictConflict: "Sono stati trovati conflitti ON/OFF. Passa alla modalità industriale flessibile se la tua tabella è un elenco di condizioni e non una tabella della verità rigorosa.",
+        noLadderStrict: "Nessun Ladder generato a causa di incoerenze della modalità rigorosa.",
+        noVisualStrict: "Nessuna vista Ladder generata a causa di incoerenze della modalità rigorosa.",
+        noLdStrict: "Nessun file .ld generato a causa di incoerenze della modalità rigorosa.",
+        consistencyStrict: "Tabella incoerente per la modalità rigorosa: esistono sovrapposizioni tra righe con uscita 1 e 0.",
+        warningScalable: "{output}: è stata usata la modalità scalabile a causa delle dimensioni elevate.",
+        statusCompletedWarnings: "Analisi completata con avvisi. {warnings}",
+        statusCompletedIndustrial: "Analisi completata in modalità industriale flessibile. La logica è stata minimizzata e poi fattorizzata per Ladder, riducendo i contatti ripetuti ed estraendo fattori comuni.",
+        statusCompletedStrict: "Analisi completata correttamente in modalità tabella ON/OFF rigorosa.",
+        consistencyOk: "Verifica interna: uscite visibili {outputs}, bobine esportate {coils}, 0 relè ausiliari aggiuntivi e stessa base di cubi per schermo/TXT/LD.",
+        mappingInput: "Ingresso: {label}  →  {alias}",
+        mappingOutput: "Uscita : {label}  →  {alias}",
+        txtTitle: "RIDUTTORE BOOLEANO A LADDER",
+        txtSummary: "RIEPILOGO:",
+        txtInputs: "- Ingressi: {value}",
+        txtOutputs: "- Uscite: {value}",
+        txtRows: "- Righe acquisite: {value}",
+        txtMode: "- Modalità: {value}",
+        txtExpressions: "ESPRESSIONI:",
+        txtAscii: "LADDER ASCII:",
+        txtLdPerRung: "CODICE LADDER LDMICRO PER RUNG (ESATTO):",
+        txtMapping: "MAPPATURA LDmicro:",
+        txtVerification: "VERIFICA:",
+        txtVisibleOutputs: "- Uscite logiche visibili: {value}",
+        txtExportedCoils: "- Bobine esportate: {value}",
+        txtNoExtraCoils: "- Non vengono generate bobine ausiliarie aggiuntive.",
+        txtNoExtraRelays: "- Non vengono generati relè interni aggiuntivi.",
+        txtSameSerializer: "- Il blocco 'CODICE LADDER LDMICRO PER RUNG (ESATTO)' e il blocco 'FILE LD COMPLETO (ESATTO)' sono generati dallo stesso serializzatore usato per esportare il file .ld.",
+        txtLdFull: "FILE LD COMPLETO (ESATTO):"
+      }
+    };
+
+    function t(key, vars){
+      let str = (I18N[appState.lang] && I18N[appState.lang][key]) || I18N.es[key] || key;
+      if(vars){
+        Object.entries(vars).forEach(([k,v]) => {
+          str = str.replace(new RegExp(`\{${k}\}`, 'g'), String(v));
+        });
+      }
+      return str;
+    }
+
+    /**
+     * Construye el texto mostrado en la ventana "Acerca de".
+     * Solo contiene versión y autor, traducidos según el idioma activo.
+     */
+    function buildAboutText(){
+      return `${t('aboutVersionLabel')}: ${APP_VERSION}
+${t('aboutAuthorLabel')}: ${APP_AUTHOR}`;
+    }
+
+    /**
+     * Refresca los textos del botón y de la ventana modal informativa.
+     */
+    function applyAboutTranslations(){
+      if(ui.aboutBtn) ui.aboutBtn.textContent = t('aboutBtn');
+      if(ui.aboutTitle) ui.aboutTitle.textContent = t('aboutTitle');
+      if(ui.aboutBody) ui.aboutBody.textContent = buildAboutText();
+      if(ui.aboutCloseBtn) ui.aboutCloseBtn.textContent = t('aboutClose');
+    }
+
+    /**
+     * Abre la ventana modal "Acerca de".
+     */
+    function openAboutModal(){
+      applyAboutTranslations();
+      if(!ui.aboutModal) return;
+      ui.aboutModal.classList.add('show');
+      ui.aboutModal.setAttribute('aria-hidden', 'false');
+    }
+
+    /**
+     * Cierra la ventana modal "Acerca de".
+     */
+    function closeAboutModal(){
+      if(!ui.aboutModal) return;
+      ui.aboutModal.classList.remove('show');
+      ui.aboutModal.setAttribute('aria-hidden', 'true');
+    }
+
+    function describeMode(semantics, algorithm){
+      const sem = semantics === 'industrial' ? t('modeSemIndustrial') : t('modeSemStrict');
+      let alg;
+      if(algorithm === 'exacto') alg = t('modeAlgExact');
+      else if(algorithm === 'escalable') alg = t('modeAlgScalable');
+      else alg = t('modeAlgFlexible');
+      return `${sem} / ${alg}`;
+    }
+
+    function applyStaticTranslations(){
+      document.title = t('appTitleDoc');
+      $("appTitle").textContent = t('appTitle');
+      $("appLead").innerHTML = t('appLeadHTML');
+      $("langLabel").textContent = t('langLabel');
+      applyAboutTranslations();
+      document.querySelectorAll('.card h2')[0].textContent = t('section1');
+      document.querySelectorAll('.card h2')[1].textContent = t('section2');
+      document.querySelectorAll('.card h2')[2].textContent = t('section3');
+      document.querySelector('label[for="numInputs"]').textContent = t('labelInputs');
+      document.querySelector('label[for="numOutputs"]').textContent = t('labelOutputs');
+      document.querySelector('label[for="rowCount"]').textContent = t('labelInitialRows');
+      document.querySelector('label[for="logicMode"]').textContent = t('labelLogicMode');
+      ui.logicMode.querySelector('option[value="industrial"]').textContent = t('modeIndustrial');
+      ui.logicMode.querySelector('option[value="strict"]').textContent = t('modeStrict');
+      document.querySelector('label[for="cycleTime"]').textContent = 'CYCLE (µs)';
+      document.querySelector('label[for="crystal"]').textContent = 'CRYSTAL (Hz)';
+      document.querySelector('label[for="baud"]').textContent = 'BAUD';
+      ui.buildBtn.textContent = t('btnApplyDimensions');
+      ui.addRowBtn.textContent = t('btnAddRow');
+      ui.removeRowBtn.textContent = t('btnRemoveLastRow');
+      ui.loadExampleBtn.textContent = t('btnLoadExample');
+      ui.clearBtn.textContent = t('btnReset');
+      document.querySelectorAll('.footer-note')[0].innerHTML = t('rulesHTML');
+      document.querySelector('label[for="pasteArea"]').textContent = t('labelPaste');
+      ui.pasteArea.placeholder = t('pastePlaceholder');
+      ui.importBtn.textContent = t('btnImport');
+      ui.exportTableBtn.textContent = t('btnDownloadTSV');
+      ui.analyzeBtn.textContent = t('btnAnalyze');
+      ui.downloadTxtBtn.textContent = t('btnDownloadTXT');
+      ui.downloadLdBtn.textContent = t('btnDownloadLD');
+      const kpis = document.querySelectorAll('.kpi .muted.tiny');
+      if(kpis[0]) kpis[0].textContent = t('kpiMode');
+      if(kpis[1]) kpis[1].textContent = t('kpiRungs');
+      if(kpis[2]) kpis[2].textContent = t('kpiContacts');
+      const summary = document.querySelector('details summary');
+      if(summary) summary.textContent = t('summaryNotes');
+      const notesWrap = document.querySelector('details .small.muted');
+      if(notesWrap) notesWrap.innerHTML = t('note1HTML') + t('note2HTML') + t('note3HTML') + t('note4HTML');
+      const sections = document.querySelectorAll('.section-title');
+      if(sections[0]) sections[0].textContent = t('sectionExpressions');
+      if(sections[1]) sections[1].textContent = t('sectionAscii');
+      if(sections[2]) sections[2].textContent = t('sectionVisual');
+      if(sections[3]) sections[3].textContent = t('sectionLd');
+      if(sections[4]) sections[4].textContent = t('sectionConsistency');
+    }
+
+    function setLanguage(lang){
+      appState.lang = I18N[lang] ? lang : 'es';
+      try { localStorage.setItem('reductor_booleano_ldmicro_lang', appState.lang); } catch(err){}
+      if(ui.langSelect) ui.langSelect.value = appState.lang;
+      applyStaticTranslations();
+      if(appState.lastResult) analyze();
+      else clearResultPreview();
+    }
+
+    /**
+     * Crea una fila por defecto con entradas en X y salidas en 0.
+     */
+    function makeDefaultRow(numInputs, numOutputs){
+      return {
+        inputs: Array.from({length:numInputs}, () => "X"),
+        outputs: Array.from({length:numOutputs}, () => "0")
+      };
+    }
+
+    /**
+     * Normaliza celdas de entrada.
+     */
+    function normalizeInputValue(value){
+      const v = String(value ?? "").trim().toUpperCase();
+      if(v === "" || v === "X") return "X";
+      if(v === "0" || v === "1") return v;
+      return null;
+    }
+
+    /**
+     * Normaliza celdas de salida.
+     */
+    function normalizeOutputValue(value){
+      const v = String(value ?? "").trim();
+      if(v === "0" || v === "1") return v;
+      return null;
+    }
+
+    function defaultInputLabel(index){
+      return `E${index+1}`;
+    }
+
+    function defaultOutputLabel(index){
+      return `S${index+1}`;
+    }
+
+    function normalizeLabel(value, fallback){
+      const txt = String(value ?? "").trim();
+      return txt || fallback;
+    }
+
+    function syncLabels(){
+      appState.inputLabels = Array.from({length:appState.numInputs}, (_, idx) =>
+        normalizeLabel(appState.inputLabels[idx], defaultInputLabel(idx))
+      );
+      appState.outputLabels = Array.from({length:appState.numOutputs}, (_, idx) =>
+        normalizeLabel(appState.outputLabels[idx], defaultOutputLabel(idx))
+      );
+    }
+
+    function getInputLabel(index){
+      return appState.inputLabels[index] || defaultInputLabel(index);
+    }
+
+    function getOutputLabel(index){
+      return appState.outputLabels[index] || defaultOutputLabel(index);
+    }
+
+    function sanitizeLdBaseName(label, fallbackPrefix, index){
+      const raw = String(label ?? "").trim().toUpperCase().replace(/[^A-Z0-9_]/g, "");
+      if(!raw) return `${fallbackPrefix}${index+1}`;
+      return raw;
+    }
+
+    function getLdInputAlias(index){
+      const base = sanitizeLdBaseName(getInputLabel(index), "X", index);
+      return base.startsWith("X") ? base : `X${base}`;
+    }
+
+    function getLdOutputAlias(index){
+      const base = sanitizeLdBaseName(getOutputLabel(index), "S", index);
+      return base.startsWith("Y") ? base : `Y${base}`;
+    }
+
+    function getLogicMode(){
+      return ui.logicMode.value === "strict" ? "strict" : "industrial";
+    }
+
+    /**
+     * Ajusta dimensiones conservando todo lo posible.
+     */
+    function applyDimensions(newInputs, newOutputs, newRowCount){
+      newInputs = clamp(parseInt(newInputs, 10) || 1, 1, 100);
+      newOutputs = clamp(parseInt(newOutputs, 10) || 1, 1, 20);
+      newRowCount = clamp(parseInt(newRowCount, 10) || 1, 1, 5000);
+
+      const previousRows = appState.rows.length ? appState.rows : [];
+      const nextRows = [];
+
+      for(let i = 0; i < newRowCount; i++){
+        const oldRow = previousRows[i] || makeDefaultRow(appState.numInputs, appState.numOutputs);
+        const row = {
+          inputs: Array.from({length:newInputs}, (_, idx) => {
+            if(idx < oldRow.inputs.length){
+              return normalizeInputValue(oldRow.inputs[idx]) ?? "X";
+            }
+            return "X";
+          }),
+          outputs: Array.from({length:newOutputs}, (_, idx) => {
+            if(idx < oldRow.outputs.length){
+              return normalizeOutputValue(oldRow.outputs[idx]) ?? "0";
+            }
+            return "0";
+          })
+        };
+        nextRows.push(row);
+      }
+
+      appState.numInputs = newInputs;
+      appState.numOutputs = newOutputs;
+      appState.rows = nextRows;
+      syncLabels();
+      renderTable();
+      clearResultPreview();
+    }
+
+    /**
+     * Dibuja la tabla editable.
+     */
+    function renderTable(){
+      const table = ui.table;
+      table.innerHTML = "";
+
+      const thead = document.createElement("thead");
+      const hr = document.createElement("tr");
+
+      const thIndex = document.createElement("th");
+      thIndex.textContent = "#";
+      hr.appendChild(thIndex);
+
+      for(let i = 0; i < appState.numInputs; i++){
+        const th = document.createElement("th");
+        th.textContent = getInputLabel(i);
+        hr.appendChild(th);
+      }
+
+      for(let i = 0; i < appState.numOutputs; i++){
+        const th = document.createElement("th");
+        th.textContent = getOutputLabel(i);
+        hr.appendChild(th);
+      }
+
+      thead.appendChild(hr);
+      table.appendChild(thead);
+
+      const tbody = document.createElement("tbody");
+
+      appState.rows.forEach((row, rowIndex) => {
+        const tr = document.createElement("tr");
+
+        const tdIndex = document.createElement("td");
+        tdIndex.textContent = String(rowIndex + 1);
+        tr.appendChild(tdIndex);
+
+        row.inputs.forEach((value, colIndex) => {
+          const td = document.createElement("td");
+          const input = document.createElement("input");
+          input.className = "cell";
+          input.value = value;
+          input.maxLength = 1;
+          input.dataset.row = String(rowIndex);
+          input.dataset.kind = "input";
+          input.dataset.col = String(colIndex);
+          input.addEventListener("input", onCellInput);
+          input.addEventListener("blur", onCellBlur);
+          td.appendChild(input);
+          tr.appendChild(td);
+        });
+
+        row.outputs.forEach((value, colIndex) => {
+          const td = document.createElement("td");
+          const input = document.createElement("input");
+          input.className = "cell out";
+          input.value = value;
+          input.maxLength = 1;
+          input.dataset.row = String(rowIndex);
+          input.dataset.kind = "output";
+          input.dataset.col = String(colIndex);
+          input.addEventListener("input", onCellInput);
+          input.addEventListener("blur", onCellBlur);
+          td.appendChild(input);
+          tr.appendChild(td);
+        });
+
+        tbody.appendChild(tr);
+      });
+
+      table.appendChild(tbody);
+    }
+
+    /**
+     * Maneja escritura directa en una celda.
+     */
+    function onCellInput(ev){
+      const el = ev.target;
+      const row = parseInt(el.dataset.row, 10);
+      const col = parseInt(el.dataset.col, 10);
+      const kind = el.dataset.kind;
+
+      if(kind === "input"){
+        const n = normalizeInputValue(el.value);
+        if(n === null){
+          el.value = String(el.value).replace(/[^01xX]/g, "").toUpperCase().slice(0, 1);
+          return;
+        }
+        el.value = n;
+        appState.rows[row].inputs[col] = n;
+      }else{
+        const n = normalizeOutputValue(el.value);
+        if(n === null){
+          el.value = String(el.value).replace(/[^01]/g, "").slice(0, 1);
+          return;
+        }
+        el.value = n;
+        appState.rows[row].outputs[col] = n;
+      }
+      appState.lastResult = null;
+      ui.downloadTxtBtn.disabled = true;
+      ui.downloadLdBtn.disabled = true;
+    }
+
+    /**
+     * Corrige campos vacíos cuando el usuario sale de la celda.
+     */
+    function onCellBlur(ev){
+      const el = ev.target;
+      const row = parseInt(el.dataset.row, 10);
+      const col = parseInt(el.dataset.col, 10);
+      const kind = el.dataset.kind;
+
+      if(kind === "input"){
+        const n = normalizeInputValue(el.value) ?? "X";
+        el.value = n;
+        appState.rows[row].inputs[col] = n;
+      }else{
+        const n = normalizeOutputValue(el.value) ?? "0";
+        el.value = n;
+        appState.rows[row].outputs[col] = n;
+      }
+    }
+
+    /**
+     * Vacía la zona de resultados.
+     */
+    function clearResultPreview(){
+      ui.statusArea.className = "status warn";
+      ui.statusArea.textContent = t("statusChanged");
+      ui.expressionsPre.textContent = "—";
+      ui.asciiPre.textContent = "—";
+      ui.ladderVisualArea.innerHTML = `<div class="ladder-placeholder">${t("placeholderDash")}</div>`;
+      ui.ldPre.textContent = t("placeholderDash");
+      ui.consistencyArea.textContent = t("placeholderDash");
+      ui.mappingArea.innerHTML = "";
+      ui.modeKpi.textContent = t("placeholderDash");
+      ui.rungsKpi.textContent = t("placeholderDash");
+      ui.contactsKpi.textContent = t("placeholderDash");
+      appState.lastResult = null;
+      ui.downloadTxtBtn.disabled = true;
+      ui.downloadLdBtn.disabled = true;
+    }
+
+    /**
+     * Carga un ejemplo pequeño.
+     */
+    function loadExample(){
+      appState.numInputs = 4;
+      appState.numOutputs = 2;
+      appState.inputLabels = ["E1","E2","E3","E4"];
+      appState.outputLabels = ["S1","S2"];
+      appState.rows = [
+        { inputs:["1","1","X","0"], outputs:["1","0"] },
+        { inputs:["1","0","X","0"], outputs:["0","1"] },
+        { inputs:["X","1","1","X"], outputs:["1","0"] },
+        { inputs:["0","X","1","1"], outputs:["0","1"] },
+        { inputs:["X","X","0","0"], outputs:["0","0"] },
+        { inputs:["1","1","1","X"], outputs:["1","1"] },
+        { inputs:["0","0","X","1"], outputs:["0","1"] },
+        { inputs:["X","0","0","X"], outputs:["0","0"] }
+      ];
+      ui.numInputs.value = "4";
+      ui.numOutputs.value = "2";
+      ui.rowCount.value = String(appState.rows.length);
+      renderTable();
+      clearResultPreview();
+    }
+
+    /**
+     * Convierte la tabla actual a texto TSV.
+     */
+    function buildTSV(){
+      const headers = [];
+      for(let i = 0; i < appState.numInputs; i++) headers.push(getInputLabel(i));
+      for(let i = 0; i < appState.numOutputs; i++) headers.push(getOutputLabel(i));
+
+      const lines = [headers.join("\t")];
+      for(const row of appState.rows){
+        lines.push([...row.inputs, ...row.outputs].join("\t"));
+      }
+      return lines.join("\n");
+    }
+
+    /**
+     * Descarga un archivo.
+     */
+    function downloadText(filename, content){
+      const blob = new Blob([content], {type:"text/plain;charset=utf-8"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      // En algunos navegadores/entornos Windows, revocar la URL de inmediato
+      // puede producir descargas incompletas o de tamaño cero.
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+    }
+
+    /**
+     * Utilidades numéricas.
+     */
+    function clamp(value, min, max){
+      return Math.max(min, Math.min(max, value));
+    }
+
+    /**
+     * Copia profunda simple para cubos pequeños.
+     */
+    function cloneCube(cube){
+      return cube.slice();
+    }
+
+    /**
+     * Convierte valores de una fila a un cubo lógico.
+     * 1 -> 1, 0 -> 0, X -> -
+     */
+    function rowInputsToCube(row){
+      return row.inputs.map(v => (v === "X" ? "-" : v));
+    }
+
+    /**
+     * Convierte un cubo a clave canónica.
+     */
+    function cubeKey(cube){
+      return cube.join("");
+    }
+
+    /**
+     * Cuenta literales especificados (no don't care).
+     */
+    function literalCount(cube){
+      let total = 0;
+      for(const c of cube) if(c !== "-") total++;
+      return total;
+    }
+
+    /**
+     * Determina si dos cubos se sobreponen.
+     * Es decir, si existe al menos una asignación que satisface ambos.
+     */
+    function cubesOverlap(a, b){
+      for(let i = 0; i < a.length; i++){
+        if(a[i] !== "-" && b[i] !== "-" && a[i] !== b[i]) return false;
+      }
+      return true;
+    }
+
+    /**
+     * Determina si cubeA cubre totalmente a cubeB.
+     * En términos prácticos, toda asignación válida de B también satisface A.
+     */
+    function cubeCoversCube(cubeA, cubeB){
+      for(let i = 0; i < cubeA.length; i++){
+        if(cubeA[i] === "-") continue;
+        if(cubeB[i] !== cubeA[i]) return false;
+      }
+      return true;
+    }
+
+    /**
+     * Intenta fusionar dos cubos si solo difieren en un literal 0/1.
+     * Los don't care deben ser iguales para que la fusión sea limpia.
+     */
+    function tryMergeCubes(a, b){
+      let diffIndex = -1;
+      for(let i = 0; i < a.length; i++){
+        if(a[i] === b[i]) continue;
+        if(a[i] === "-" || b[i] === "-") return null;
+        if(diffIndex !== -1) return null;
+        diffIndex = i;
+      }
+      if(diffIndex === -1) return null;
+      const merged = cloneCube(a);
+      merged[diffIndex] = "-";
+      return merged;
+    }
+
+    /**
+     * Elimina duplicados exactos.
+     */
+    function uniqueCubes(cubes){
+      const map = new Map();
+      for(const cube of cubes){
+        map.set(cubeKey(cube), cube);
+      }
+      return [...map.values()];
+    }
+
+    /**
+     * Elimina cubos absorbidos por otros cubos más generales.
+     */
+    function absorbCubes(cubes){
+      const result = [];
+      for(let i = 0; i < cubes.length; i++){
+        let absorbed = false;
+        for(let j = 0; j < cubes.length; j++){
+          if(i === j) continue;
+          if(cubeCoversCube(cubes[j], cubes[i]) && literalCount(cubes[j]) <= literalCount(cubes[i])){
+            absorbed = true;
+            break;
+          }
+        }
+        if(!absorbed) result.push(cubes[i]);
+      }
+      return uniqueCubes(result).sort((a,b) => literalCount(a) - literalCount(b) || cubeKey(a).localeCompare(cubeKey(b)));
+    }
+
+    /**
+     * Construye una expresión legible para un cubo.
+     */
+    function cubeToExpression(cube, inputLabels = null){
+      const terms = [];
+      cube.forEach((v, idx) => {
+        if(v === "-") return;
+        const label = inputLabels ? inputLabels[idx] : getInputLabel(idx);
+        if(v === "1") terms.push(`${label}`);
+        else terms.push(`¬${label}`);
+      });
+      return terms.length ? terms.join(" · ") : "1";
+    }
+
+    /**
+     * Crea nodos del AST lógico factorizado.
+     */
+    function makeLogicConst(value){
+      return { type:"const", value:value ? 1 : 0 };
+    }
+
+    function makeLogicLit(index, value){
+      return { type:"lit", index, value };
+    }
+
+    function logicAstKey(ast){
+      if(!ast) return "0";
+      if(ast.type === "const") return ast.value ? "1" : "0";
+      if(ast.type === "lit") return `${ast.value === "1" ? "" : "!"}${ast.index}`;
+      return `${ast.type}(${ast.items.map(logicAstKey).join(",")})`;
+    }
+
+    function simplifyLogicAst(ast){
+      if(!ast) return makeLogicConst(0);
+      if(ast.type === "const" || ast.type === "lit") return ast;
+
+      const op = ast.type;
+      let items = [];
+      (ast.items || []).forEach(item => {
+        const s = simplifyLogicAst(item);
+        if(s.type === op) items.push(...s.items);
+        else items.push(s);
+      });
+
+      if(op === "and"){
+        if(items.some(item => item.type === "const" && item.value === 0)) return makeLogicConst(0);
+        items = items.filter(item => !(item.type === "const" && item.value === 1));
+      }else{
+        if(items.some(item => item.type === "const" && item.value === 1)) return makeLogicConst(1);
+        items = items.filter(item => !(item.type === "const" && item.value === 0));
+      }
+
+      if(!items.length) return makeLogicConst(op === "and" ? 1 : 0);
+
+      const unique = [];
+      const seen = new Set();
+      items.forEach(item => {
+        const key = logicAstKey(item);
+        if(!seen.has(key)){
+          seen.add(key);
+          unique.push(item);
+        }
+      });
+      unique.sort(compareLogicAst);
+
+      if(unique.length === 1) return unique[0];
+      return { type:op, items:unique };
+    }
+
+    function logicAstMinIndex(ast){
+      if(!ast) return Infinity;
+      if(ast.type === "lit") return ast.index;
+      if(ast.type === "const") return Infinity;
+      return Math.min(...ast.items.map(logicAstMinIndex));
+    }
+
+    function compareLogicAst(a, b){
+      const rank = (node) => {
+        if(node.type === "lit") return 0;
+        if(node.type === "and") return 1;
+        if(node.type === "or") return 2;
+        return 3;
+      };
+      const ra = rank(a);
+      const rb = rank(b);
+      if(ra !== rb) return ra - rb;
+      const ia = logicAstMinIndex(a);
+      const ib = logicAstMinIndex(b);
+      if(ia !== ib) return ia - ib;
+      return logicAstKey(a).localeCompare(logicAstKey(b));
+    }
+
+    function makeLogicAnd(items){
+      return simplifyLogicAst({ type:"and", items });
+    }
+
+    function makeLogicOr(items){
+      return simplifyLogicAst({ type:"or", items });
+    }
+
+    function cubeToLogicAst(cube){
+      const terms = [];
+      cube.forEach((v, idx) => {
+        if(v === "1" || v === "0") terms.push(makeLogicLit(idx, v));
+      });
+      return terms.length ? makeLogicAnd(terms) : makeLogicConst(1);
+    }
+
+    function cubesToFlatLogicAst(cubes){
+      if(!cubes.length) return makeLogicConst(0);
+      if(cubes.some(c => literalCount(c) === 0)) return makeLogicConst(1);
+      return makeLogicOr(cubes.map(cubeToLogicAst));
+    }
+
+    /**
+     * Cuenta contactos efectivos de un AST ya factorizado.
+     * Esta métrica es la que se usa para escoger la forma mejor para Ladder.
+     */
+    function countAstContacts(ast){
+      if(!ast || ast.type === "const") return 0;
+      if(ast.type === "lit") return 1;
+      return ast.items.reduce((acc, item) => acc + countAstContacts(item), 0);
+    }
+
+    function countAstNodes(ast){
+      if(!ast) return 0;
+      if(ast.type === "const" || ast.type === "lit") return 1;
+      return 1 + ast.items.reduce((acc, item) => acc + countAstNodes(item), 0);
+    }
+
+    function logicAstDepth(ast){
+      if(!ast || ast.type === "const" || ast.type === "lit") return 1;
+      return 1 + Math.max(...ast.items.map(logicAstDepth));
+    }
+
+    function isBetterLogicAst(candidate, reference){
+      const a = [countAstContacts(candidate), countAstNodes(candidate), logicAstDepth(candidate), logicAstKey(candidate).length];
+      const b = [countAstContacts(reference), countAstNodes(reference), logicAstDepth(reference), logicAstKey(reference).length];
+      for(let i = 0; i < a.length; i++){
+        if(a[i] < b[i]) return true;
+        if(a[i] > b[i]) return false;
+      }
+      return false;
+    }
+
+    function cubesCanonicalKey(cubes){
+      return absorbCubes(uniqueCubes((cubes || []).map(cloneCube))).map(cubeKey).sort().join("|");
+    }
+
+    function cubeHasLiteral(cube, index, value){
+      return cube[index] === value;
+    }
+
+    function stripLiteralFromCube(cube, index){
+      const out = cloneCube(cube);
+      out[index] = "-";
+      return out;
+    }
+
+    function stripLiteralsFromCube(cube, literals){
+      const out = cloneCube(cube);
+      literals.forEach(lit => {
+        out[lit.index] = "-";
+      });
+      return out;
+    }
+
+    function findCommonCubeLiterals(cubes){
+      if(!cubes.length) return [];
+      const common = [];
+      for(let i = 0; i < cubes[0].length; i++){
+        const ref = cubes[0][i];
+        if(ref === "-") continue;
+        let ok = true;
+        for(let j = 1; j < cubes.length; j++){
+          if(cubes[j][i] !== ref){
+            ok = false;
+            break;
+          }
+        }
+        if(ok) common.push({ index:i, value:ref });
+      }
+      return common;
+    }
+
+    function collectLiteralCandidates(cubes){
+      const map = new Map();
+      cubes.forEach(cube => {
+        cube.forEach((v, idx) => {
+          if(v !== "1" && v !== "0") return;
+          const key = `${idx}:${v}`;
+          if(!map.has(key)) map.set(key, { index:idx, value:v, count:0 });
+          map.get(key).count += 1;
+        });
+      });
+      return [...map.values()]
+        .filter(item => item.count >= 2 && item.count < cubes.length)
+        .sort((a, b) => b.count - a.count || a.index - b.index || String(a.value).localeCompare(String(b.value)));
+    }
+
+    /**
+     * Factorización recursiva orientada a Ladder.
+     * Parte de la SOP mínima/casi mínima y extrae factores comunes globales y parciales.
+     */
+    function factorCubesForLadder(cubes){
+      const normalized = absorbCubes(uniqueCubes((cubes || []).map(cloneCube)));
+      const memo = new Map();
+      return factorCubesForLadderRec(normalized, memo);
+    }
+
+    function factorCubesForLadderRec(cubes, memo){
+      const work = absorbCubes(uniqueCubes((cubes || []).map(cloneCube)));
+      const key = cubesCanonicalKey(work);
+      if(memo.has(key)) return memo.get(key);
+
+      if(!work.length){
+        const zeroAst = makeLogicConst(0);
+        memo.set(key, zeroAst);
+        return zeroAst;
+      }
+
+      if(work.some(cube => literalCount(cube) === 0)){
+        const oneAst = makeLogicConst(1);
+        memo.set(key, oneAst);
+        return oneAst;
+      }
+
+      const common = findCommonCubeLiterals(work);
+      if(common.length){
+        const stripped = work.map(cube => stripLiteralsFromCube(cube, common));
+        const factored = makeLogicAnd([
+          makeLogicAnd(common.map(lit => makeLogicLit(lit.index, lit.value))),
+          factorCubesForLadderRec(stripped, memo)
+        ]);
+        memo.set(key, factored);
+        return factored;
+      }
+
+      let bestAst = cubesToFlatLogicAst(work);
+      const candidates = collectLiteralCandidates(work);
+      const searchList = (work.length <= 12 && candidates.length <= 28)
+        ? candidates
+        : candidates.slice(0, 10);
+
+      searchList.forEach(candidate => {
+        const grouped = [];
+        const rest = [];
+        work.forEach(cube => {
+          if(cubeHasLiteral(cube, candidate.index, candidate.value)) grouped.push(cube);
+          else rest.push(cube);
+        });
+
+        if(grouped.length < 2 || grouped.length === work.length) return;
+
+        const strippedGroup = grouped.map(cube => stripLiteralFromCube(cube, candidate.index));
+        const groupedAst = makeLogicAnd([
+          makeLogicLit(candidate.index, candidate.value),
+          factorCubesForLadderRec(strippedGroup, memo)
+        ]);
+        const candidateAst = rest.length
+          ? makeLogicOr([groupedAst, factorCubesForLadderRec(rest, memo)])
+          : groupedAst;
+
+        if(isBetterLogicAst(candidateAst, bestAst)) bestAst = candidateAst;
+      });
+
+      memo.set(key, bestAst);
+      return bestAst;
+    }
+
+    function logicAstToExpression(ast, inputLabels = null, parentType = null){
+      if(!ast) return "0";
+      if(ast.type === "const") return ast.value ? "1" : "0";
+      if(ast.type === "lit"){
+        const label = inputLabels ? inputLabels[ast.index] : getInputLabel(ast.index);
+        return ast.value === "1" ? label : `¬${label}`;
+      }
+      const op = ast.type === "and" ? " · " : " + ";
+      const ownType = ast.type;
+      const body = ast.items.map(item => logicAstToExpression(item, inputLabels, ownType)).join(op);
+      if(parentType === "and" && ownType === "or") return `(${body})`;
+      return body;
+    }
+
+    /**
+     * Convierte una colección de cubos en expresión, preferentemente factorizada.
+     */
+    function cubesToExpression(cubes, inputLabels = null){
+      return logicAstToExpression(factorCubesForLadder(cubes), inputLabels);
+    }
+
+    /**
+     * Convierte un cubo a instrucciones LDmicro CONTACTS.
+     */
+    function cubeToLdInstructions(cube, inputPrefix = ""){
+      const lines = [];
+      cube.forEach((v, idx) => {
+        if(v === "-") return;
+        const name = inputPrefix ? `${inputPrefix}${idx+1}` : getLdInputAlias(idx);
+        const negatedFlag = v === "1" ? "0" : "1";
+        lines.push(` CONTACTS ${name} ${negatedFlag}`);
+      });
+      return lines;
+    }
+
+    /**
+     * Determina el modo de minimización apropiado para el problema actual.
+     * Se usa modo exacto cuando el espacio de estados sigue siendo razonable.
+     */
+    function chooseMinimizationMode(numInputs, rows){
+      if(numInputs <= 12 && rows.length <= 500) return "exacto";
+      return "escalable";
+    }
+
+    /**
+     * Genera lista de conflictos entre filas que obligan simultáneamente a 1 y 0.
+     */
+    function detectConflicts(rows, outputIndex, semantics = "strict"){
+      if(semantics !== "strict") return [];
+      const positive = [];
+      const negative = [];
+
+      rows.forEach((row, idx) => {
+        const cube = rowInputsToCube(row);
+        const out = row.outputs[outputIndex];
+        if(out === "1") positive.push({cube, row: idx + 1});
+        else negative.push({cube, row: idx + 1});
+      });
+
+      const conflicts = [];
+      for(const p of positive){
+        for(const n of negative){
+          if(cubesOverlap(p.cube, n.cube)){
+            conflicts.push({
+              positiveRow: p.row,
+              negativeRow: n.row,
+              positiveCube: p.cube,
+              negativeCube: n.cube
+            });
+            if(conflicts.length >= 12) return conflicts;
+          }
+        }
+      }
+      return conflicts;
+    }
+
+    /**
+     * Expande una fila/cubo a minterms exactos.
+     * Solo se usa en modo exacto, limitado a 12 entradas.
+     */
+    function expandCubeToMinterms(cube){
+      const results = [];
+      function walk(index, currentBits){
+        if(index >= cube.length){
+          results.push(parseInt(currentBits.join(""), 2));
+          return;
+        }
+        if(cube[index] === "-"){
+          currentBits.push("0");
+          walk(index + 1, currentBits);
+          currentBits.pop();
+          currentBits.push("1");
+          walk(index + 1, currentBits);
+          currentBits.pop();
+        }else{
+          currentBits.push(cube[index]);
+          walk(index + 1, currentBits);
+          currentBits.pop();
+        }
+      }
+      walk(0, []);
+      return results;
+    }
+
+    /**
+     * Convierte número entero a cadena binaria fija.
+     */
+    function toBinaryString(value, width){
+      return value.toString(2).padStart(width, "0");
+    }
+
+    /**
+     * Cuenta bits en 1 ignorando '-'.
+     */
+    function countOnesInTerm(term){
+      let c = 0;
+      for(const ch of term) if(ch === "1") c++;
+      return c;
+    }
+
+    /**
+     * Comprueba si un término Q-M cubre un minterm concreto.
+     */
+    function termCoversMinterm(term, minterm, width){
+      const bits = toBinaryString(minterm, width);
+      for(let i = 0; i < width; i++){
+        if(term[i] === "-") continue;
+        if(term[i] !== bits[i]) return false;
+      }
+      return true;
+    }
+
+    /**
+     * Combina dos términos Q-M si difieren en un solo bit 0/1.
+     */
+    function combineTerms(termA, termB){
+      let diff = 0;
+      let merged = "";
+      for(let i = 0; i < termA.length; i++){
+        const a = termA[i];
+        const b = termB[i];
+        if(a === b){
+          merged += a;
+          continue;
+        }
+        if(a === "-" || b === "-") return null;
+        diff++;
+        if(diff > 1) return null;
+        merged += "-";
+      }
+      return diff === 1 ? merged : null;
+    }
+
+    /**
+     * Reducción exacta tipo Quine-McCluskey + selección exacta/greedy.
+     * Devuelve cubos minimizados.
+     */
+    function minimizeExact(numInputs, rows, outputIndex){
+      const conflicts = detectConflicts(rows, outputIndex);
+      if(conflicts.length){
+        return { ok:false, conflicts };
+      }
+
+      const assignmentState = new Map(); // minterm -> "1" | "0"
+      for(const row of rows){
+        const cube = rowInputsToCube(row);
+        const out = row.outputs[outputIndex];
+        const minterms = expandCubeToMinterms(cube);
+        for(const mt of minterms){
+          const prev = assignmentState.get(mt);
+          if(prev && prev !== out){
+            return {
+              ok:false,
+              conflicts:[{
+                positiveRow:"varias",
+                negativeRow:"varias",
+                positiveCube:cube,
+                negativeCube:cube
+              }]
+            };
+          }
+          assignmentState.set(mt, out);
+        }
+      }
+
+      const totalStates = 2 ** numInputs;
+      const onSet = [];
+      const offSet = [];
+      const dcSet = [];
+      for(let i = 0; i < totalStates; i++){
+        const state = assignmentState.get(i);
+        if(state === "1") onSet.push(i);
+        else if(state === "0") offSet.push(i);
+        else dcSet.push(i);
+      }
+
+      if(onSet.length === 0){
+        return { ok:true, cubes:[] };
+      }
+
+      if(offSet.length === 0){
+        return { ok:true, cubes:[Array.from({length:numInputs}, () => "-")] };
+      }
+
+      const initial = [...onSet, ...dcSet].map(mt => ({
+        term: toBinaryString(mt, numInputs),
+        cover: new Set(onSet.includes(mt) ? [mt] : []),
+        used: false
+      }));
+
+      let current = initial;
+      const primes = [];
+
+      while(current.length){
+        const groups = new Map();
+        for(const item of current){
+          const ones = countOnesInTerm(item.term);
+          if(!groups.has(ones)) groups.set(ones, []);
+          groups.get(ones).push(item);
+          item.used = false;
+        }
+
+        const nextMap = new Map();
+        const sortedKeys = [...groups.keys()].sort((a,b)=>a-b);
+
+        for(let g = 0; g < sortedKeys.length - 1; g++){
+          const groupA = groups.get(sortedKeys[g]) || [];
+          const groupB = groups.get(sortedKeys[g+1]) || [];
+
+          for(const a of groupA){
+            for(const b of groupB){
+              const merged = combineTerms(a.term, b.term);
+              if(!merged) continue;
+              a.used = true;
+              b.used = true;
+
+              const cover = new Set([...a.cover, ...b.cover]);
+              const key = merged;
+              if(!nextMap.has(key)){
+                nextMap.set(key, {term: merged, cover, used:false});
+              }else{
+                const existing = nextMap.get(key);
+                for(const mt of cover) existing.cover.add(mt);
+              }
+            }
+          }
+        }
+
+        for(const items of groups.values()){
+          for(const item of items){
+            if(!item.used){
+              primes.push({term:item.term, cover:new Set(item.cover)});
+            }
+          }
+        }
+
+        current = [...nextMap.values()];
+      }
+
+      const uniquePrimeMap = new Map();
+      for(const pi of primes){
+        if(!uniquePrimeMap.has(pi.term)){
+          uniquePrimeMap.set(pi.term, {term:pi.term, cover:new Set(pi.cover)});
+        }else{
+          const existing = uniquePrimeMap.get(pi.term);
+          for(const mt of pi.cover) existing.cover.add(mt);
+        }
+      }
+      const uniquePrimes = [...uniquePrimeMap.values()];
+
+      const chart = new Map();
+      for(const mt of onSet){
+        const covering = [];
+        uniquePrimes.forEach((pi, idx) => {
+          if(termCoversMinterm(pi.term, mt, numInputs)) covering.push(idx);
+        });
+        chart.set(mt, covering);
+      }
+
+      const selected = new Set();
+      const coveredMinterms = new Set();
+
+      for(const [mt, covering] of chart.entries()){
+        if(covering.length === 1){
+          const idx = covering[0];
+          selected.add(idx);
+        }
+      }
+
+      for(const idx of selected){
+        for(const mt of uniquePrimes[idx].cover){
+          coveredMinterms.add(mt);
+        }
+      }
+
+      const remainingMinterms = onSet.filter(mt => !coveredMinterms.has(mt));
+      if(remainingMinterms.length){
+        const candidateIndices = uniquePrimes
+          .map((_, idx) => idx)
+          .filter(idx => !selected.has(idx) && remainingMinterms.some(mt => termCoversMinterm(uniquePrimes[idx].term, mt, numInputs)));
+
+        let best = null;
+
+        if(candidateIndices.length <= 22 && remainingMinterms.length <= 30){
+          const remIndexMap = new Map(remainingMinterms.map((mt, i) => [mt, i]));
+          const candidateMasks = candidateIndices.map(idx => {
+            let mask = 0;
+            for(const mt of remainingMinterms){
+              if(termCoversMinterm(uniquePrimes[idx].term, mt, numInputs)){
+                mask |= (1 << remIndexMap.get(mt));
+              }
+            }
+            return { idx, mask, literals: literalCount(uniquePrimes[idx].term.split("")) };
+          });
+
+          const targetMask = (1 << remainingMinterms.length) - 1;
+          candidateMasks.sort((a,b) => {
+            const coverA = popcount(a.mask);
+            const coverB = popcount(b.mask);
+            return coverB - coverA || a.literals - b.literals;
+          });
+
+          function dfs(pos, usedIndices, mask, literalTotal){
+            if(mask === targetMask){
+              const candidate = {
+                indices:[...usedIndices],
+                terms: usedIndices.length,
+                literals: literalTotal
+              };
+              if(!best || candidate.terms < best.terms || (candidate.terms === best.terms && candidate.literals < best.literals)){
+                best = candidate;
+              }
+              return;
+            }
+            if(pos >= candidateMasks.length) return;
+            if(best && usedIndices.length >= best.terms) return;
+
+            const item = candidateMasks[pos];
+            dfs(pos + 1, usedIndices, mask, literalTotal);
+
+            usedIndices.push(item.idx);
+            dfs(pos + 1, usedIndices, mask | item.mask, literalTotal + item.literals);
+            usedIndices.pop();
+          }
+
+          dfs(0, [], 0, 0);
+        }
+
+        if(!best){
+          const rem = new Set(remainingMinterms);
+          const chosen = [];
+          const available = candidateIndices.slice();
+
+          while(rem.size){
+            available.sort((ia, ib) => {
+              const aCover = countSetCoverage(uniquePrimes[ia], rem, numInputs);
+              const bCover = countSetCoverage(uniquePrimes[ib], rem, numInputs);
+              const aLit = literalCount(uniquePrimes[ia].term.split(""));
+              const bLit = literalCount(uniquePrimes[ib].term.split(""));
+              return bCover - aCover || aLit - bLit;
+            });
+            const idx = available.shift();
+            if(idx === undefined) break;
+            chosen.push(idx);
+            for(const mt of [...rem]){
+              if(termCoversMinterm(uniquePrimes[idx].term, mt, numInputs)) rem.delete(mt);
+            }
+          }
+          best = { indices: chosen };
+        }
+
+        for(const idx of best.indices){
+          selected.add(idx);
+        }
+      }
+
+      const cubes = [...selected].map(idx => uniquePrimes[idx].term.split("")).sort((a,b) => literalCount(a) - literalCount(b));
+      return { ok:true, cubes: absorbCubes(uniqueCubes(cubes)) };
+    }
+
+    /**
+     * Minimización escalable basada en cubos:
+     * - valida conflictos
+     * - elimina duplicados
+     * - absorbe
+     * - fusiona si la fusión no invade estados OFF explícitos
+     * - resuelve cobertura mínima o casi mínima
+     */
+    function minimizeScalable(numInputs, rows, outputIndex){
+      const conflicts = detectConflicts(rows, outputIndex);
+      if(conflicts.length){
+        return { ok:false, conflicts };
+      }
+
+      let positive = [];
+      let negative = [];
+
+      rows.forEach((row) => {
+        const cube = rowInputsToCube(row);
+        const out = row.outputs[outputIndex];
+        if(out === "1") positive.push(cube);
+        else negative.push(cube);
+      });
+
+      positive = absorbCubes(uniqueCubes(positive));
+      negative = absorbCubes(uniqueCubes(negative));
+
+      if(positive.length === 0){
+        return { ok:true, cubes:[] };
+      }
+
+      if(negative.length === 0){
+        return { ok:true, cubes:[Array.from({length:numInputs}, () => "-")] };
+      }
+
+      let changed = true;
+      let work = positive.slice();
+
+      while(changed){
+        changed = false;
+        const merged = [];
+        for(let i = 0; i < work.length; i++){
+          for(let j = i + 1; j < work.length; j++){
+            const m = tryMergeCubes(work[i], work[j]);
+            if(!m) continue;
+            const touchesZero = negative.some(z => cubesOverlap(m, z));
+            if(!touchesZero){
+              merged.push(m);
+            }
+          }
+        }
+
+        if(merged.length){
+          const next = absorbCubes(uniqueCubes([...work, ...merged]));
+          if(next.length !== work.length || next.some((cube, idx) => cubeKey(cube) !== cubeKey(work[idx]))){
+            work = next;
+            changed = true;
+          }
+        }
+      }
+
+      const candidates = absorbCubes(uniqueCubes(work));
+      const originalPositive = positive.slice();
+      const chosen = selectMinimumCoverFromCandidates(candidates, originalPositive);
+      return { ok:true, cubes:chosen };
+    }
+
+    /**
+     * Cuenta bits activos en un entero.
+     */
+
+    function selectMinimumCoverFromCandidates(candidates, originalPositive){
+      const coverMap = candidates.map(cand => originalPositive
+        .map((p, idx) => cubeCoversCube(cand, p) ? idx : -1)
+        .filter(v => v !== -1));
+
+      let chosenIndices = [];
+
+      if(candidates.length <= 22 && originalPositive.length <= 30){
+        let best = null;
+        const totalMask = (1 << originalPositive.length) - 1;
+        const candidateMasks = coverMap.map((coveredIndices, idx) => {
+          let mask = 0;
+          for(const ci of coveredIndices) mask |= (1 << ci);
+          return { idx, mask, literals: literalCount(candidates[idx]) };
+        }).sort((a,b) => popcount(b.mask) - popcount(a.mask) || a.literals - b.literals);
+
+        function dfs(pos, used, mask, literalTotal){
+          if(mask === totalMask){
+            const cand = { list:[...used], terms: used.length, literals: literalTotal };
+            if(!best || cand.terms < best.terms || (cand.terms === best.terms && cand.literals < best.literals)){
+              best = cand;
+            }
+            return;
+          }
+          if(pos >= candidateMasks.length) return;
+          if(best && used.length >= best.terms) return;
+
+          dfs(pos + 1, used, mask, literalTotal);
+          used.push(candidateMasks[pos].idx);
+          dfs(pos + 1, used, mask | candidateMasks[pos].mask, literalTotal + candidateMasks[pos].literals);
+          used.pop();
+        }
+
+        dfs(0, [], 0, 0);
+        if(best) chosenIndices = best.list;
+      }
+
+      if(chosenIndices.length === 0){
+        const remaining = new Set(originalPositive.map((_, idx) => idx));
+        while(remaining.size){
+          let bestIdx = -1;
+          let bestCoverage = -1;
+          let bestLits = Infinity;
+          candidates.forEach((cand, idx) => {
+            let coverage = 0;
+            for(const pIdx of remaining){
+              if(cubeCoversCube(cand, originalPositive[pIdx])) coverage++;
+            }
+            const lits = literalCount(cand);
+            if(coverage > bestCoverage || (coverage === bestCoverage && lits < bestLits)){
+              bestCoverage = coverage;
+              bestLits = lits;
+              bestIdx = idx;
+            }
+          });
+          if(bestIdx === -1) break;
+          chosenIndices.push(bestIdx);
+          for(const pIdx of [...remaining]){
+            if(cubeCoversCube(candidates[bestIdx], originalPositive[pIdx])) remaining.delete(pIdx);
+          }
+        }
+      }
+
+      return absorbCubes(uniqueCubes(chosenIndices.map(idx => candidates[idx])));
+    }
+
+    function minimizePositiveOnly(rows, outputIndex){
+      let positive = [];
+
+      rows.forEach((row) => {
+        const cube = rowInputsToCube(row);
+        const out = row.outputs[outputIndex];
+        if(out === "1") positive.push(cube);
+      });
+
+      positive = absorbCubes(uniqueCubes(positive));
+
+      if(positive.length === 0){
+        return { ok:true, cubes:[] };
+      }
+
+      let changed = true;
+      let work = positive.slice();
+
+      while(changed){
+        changed = false;
+        const merged = [];
+        for(let i = 0; i < work.length; i++){
+          for(let j = i + 1; j < work.length; j++){
+            const m = tryMergeCubes(work[i], work[j]);
+            if(m) merged.push(m);
+          }
+        }
+
+        if(merged.length){
+          const next = absorbCubes(uniqueCubes([...work, ...merged]));
+          if(next.length !== work.length || next.some((cube, idx) => cubeKey(cube) !== cubeKey(work[idx]))){
+            work = next;
+            changed = true;
+          }
+        }
+      }
+
+      const candidates = absorbCubes(uniqueCubes(work));
+      const chosen = selectMinimumCoverFromCandidates(candidates, positive.slice());
+      return { ok:true, cubes:chosen };
+    }
+    function popcount(n){
+      let c = 0;
+      while(n){
+        n &= (n - 1);
+        c++;
+      }
+      return c;
+    }
+
+    /**
+     * Cuenta cuántos minterms pendientes cubre un primo.
+     */
+    function countSetCoverage(prime, remSet, width){
+      let c = 0;
+      for(const mt of remSet){
+        if(termCoversMinterm(prime.term, mt, width)) c++;
+      }
+      return c;
+    }
+
+    /**
+     * Formatea una lista de conflictos de manera legible.
+     */
+    function formatConflicts(conflicts){
+      const lines = [];
+      for(const item of conflicts){
+        lines.push(
+          t("conflictLine", { positiveRow: item.positiveRow, negativeRow: item.negativeRow })
+        );
+      }
+      return lines.join("\n");
+    }
+
+    /**
+     * Detecta filas con el mismo patrón exacto de entradas pero con salidas contradictorias.
+     * Esta validación aplica tanto a modo industrial como estricto porque la tabla sería ambigua.
+     */
+    function detectDuplicateRowOutputConflicts(rows){
+      const seen = new Map();
+      const conflicts = [];
+
+      rows.forEach((row, rowIndex) => {
+        const key = row.inputs.join("|");
+        if(!seen.has(key)){
+          seen.set(key, [{ rowIndex, outputs: row.outputs.slice() }]);
+          return;
+        }
+
+        const previousRows = seen.get(key);
+        previousRows.forEach(prev => {
+          for(let outIndex = 0; outIndex < appState.numOutputs; outIndex++){
+            const a = prev.outputs[outIndex];
+            const b = row.outputs[outIndex];
+            if(a !== b){
+              conflicts.push({
+                rowA: prev.rowIndex + 1,
+                rowB: rowIndex + 1,
+                output: getOutputLabel(outIndex),
+                valueA: a,
+                valueB: b
+              });
+            }
+          }
+        });
+
+        previousRows.push({ rowIndex, outputs: row.outputs.slice() });
+      });
+
+      return conflicts;
+    }
+
+    function formatDuplicateConflicts(conflicts){
+      return conflicts.map(item => t("duplicateConflictLine", item)).join("\n");
+    }
+
+    /**
+     * Detecta ambigüedades donde una fila más general cubre otra más específica
+     * y ambas definen valores contradictorios para la misma salida.
+     * Esta validación aplica también en modo industrial porque la tabla deja de ser
+     * determinista como conjunto de reglas.
+     */
+    function detectCoverageRowOutputConflicts(rows){
+      const conflicts = [];
+      const seen = new Set();
+
+      for(let rowA = 0; rowA < rows.length; rowA++){
+        const cubeA = rowInputsToCube(rows[rowA]);
+        for(let rowB = rowA + 1; rowB < rows.length; rowB++){
+          const cubeB = rowInputsToCube(rows[rowB]);
+
+          if(cubeKey(cubeA) === cubeKey(cubeB)) continue;
+
+          const aCoversB = cubeCoversCube(cubeA, cubeB);
+          const bCoversA = cubeCoversCube(cubeB, cubeA);
+          if(!aCoversB && !bCoversA) continue;
+
+          for(let outIndex = 0; outIndex < appState.numOutputs; outIndex++){
+            const valueA = rows[rowA].outputs[outIndex];
+            const valueB = rows[rowB].outputs[outIndex];
+            if(valueA === valueB) continue;
+
+            let broaderRow = null;
+            let narrowerRow = null;
+            let broaderValue = null;
+            let narrowerValue = null;
+
+            if(aCoversB && !bCoversA){
+              broaderRow = rowA + 1;
+              narrowerRow = rowB + 1;
+              broaderValue = valueA;
+              narrowerValue = valueB;
+            }else if(bCoversA && !aCoversB){
+              broaderRow = rowB + 1;
+              narrowerRow = rowA + 1;
+              broaderValue = valueB;
+              narrowerValue = valueA;
+            }else{
+              continue;
+            }
+
+            const key = [broaderRow, narrowerRow, outIndex, broaderValue, narrowerValue].join("|");
+            if(seen.has(key)) continue;
+            seen.add(key);
+
+            conflicts.push({
+              rowA: rowA + 1,
+              rowB: rowB + 1,
+              broaderRow,
+              narrowerRow,
+              broaderValue,
+              narrowerValue,
+              output: getOutputLabel(outIndex)
+            });
+          }
+        }
+      }
+
+      return conflicts;
+    }
+
+    function formatCoverageConflicts(conflicts){
+      return conflicts.map(item => t("coverageConflictLine", item)).join("\n");
+    }
+
+    /**
+     * Describe el AST como lectura humana orientada a Ladder.
+     */
+    function logicAstToReading(ast){
+      if(!ast) return t("readingOpen");
+      if(ast.type === "const") return ast.value ? t("readingDirect") : t("readingOpen");
+      if(ast.type === "lit"){
+        const label = getInputLabel(ast.index);
+        return `${label} ${ast.value === "1" ? "NO" : "NC"}`;
+      }
+      if(ast.type === "and"){
+        return ast.items.map(item => {
+          const txt = logicAstToReading(item);
+          return item.type === "or" ? `(${txt})` : txt;
+        }).join(t("readingSeries"));
+      }
+      return `${t("readingParallelPrefix")}${ast.items.map(item => `(${logicAstToReading(item)})`).join(" OR ")}`;
+    }
+
+    function logicAstToAsciiLines(ast, indent){
+      const pad = indent || "";
+      if(!ast) return [`${pad}${t("asciiOpen")}`];
+      if(ast.type === "const") return [`${pad}${ast.value ? t("asciiDirect") : t("asciiOpen")}`];
+      if(ast.type === "lit"){
+        return [`${pad}[${ast.value === "1" ? getInputLabel(ast.index) : "/" + getInputLabel(ast.index)}]`];
+      }
+      if(ast.type === "and"){
+        const lines = [`${pad}${t("asciiSeries")}`];
+        ast.items.forEach(item => {
+          lines.push(...logicAstToAsciiLines(item, `${pad}  `));
+        });
+        return lines;
+      }
+      const lines = [`${pad}${t("asciiParallel")}`];
+      ast.items.forEach((item, idx) => {
+        lines.push(`${pad}  ${t("asciiBranch")} ${idx + 1}`);
+        lines.push(...logicAstToAsciiLines(item, `${pad}    `));
+      });
+      return lines;
+    }
+
+    /**
+     * Genera Ladder ASCII legible y factorizado.
+     */
+    function buildAsciiForOutput(outputName, astOrCubes){
+      const ast = Array.isArray(astOrCubes) ? factorCubesForLadder(astOrCubes) : (astOrCubes || makeLogicConst(0));
+      const lines = [];
+      lines.push(t("rungOf", { output: outputName }));
+      lines.push("");
+      lines.push(...logicAstToAsciiLines(ast, "  "));
+      lines.push(`  COIL (${outputName})`);
+      lines.push("");
+      lines.push(t("readingLabel", { reading: logicAstToReading(ast) }));
+      return lines.join("\n");
+    }
+
+
+    const LADDER_VISUAL_CFG = {
+      railMargin: 26,
+      railGap: 18,
+      networkGap: 22,
+      coilGap: 28,
+      coilWidth: 92,
+      coilHeight: 38,
+      litWidth: 96,
+      litHeight: 44,
+      seriesGap: 18,
+      branchGap: 26,
+      parallelPadX: 18,
+      rungPadY: 18,
+      titleBand: 22,
+      branchMinWidth: 88,
+      minSvgWidth: 760
+    };
+
+    function createSvgNode(tag, attrs){
+      const node = document.createElementNS("http://www.w3.org/2000/svg", tag);
+      Object.entries(attrs || {}).forEach(([key, value]) => {
+        node.setAttribute(key, String(value));
+      });
+      return node;
+    }
+
+    function appendSvgLine(svg, x1, y1, x2, y2, className){
+      svg.appendChild(createSvgNode("line", {
+        x1:round2(x1), y1:round2(y1), x2:round2(x2), y2:round2(y2),
+        class:className || "wire"
+      }));
+    }
+
+    function appendSvgText(svg, x, y, text, className, anchor){
+      const node = createSvgNode("text", {
+        x:round2(x), y:round2(y), class:className || "label"
+      });
+      if(anchor) node.setAttribute("text-anchor", anchor);
+      node.textContent = text;
+      svg.appendChild(node);
+      return node;
+    }
+
+    function round2(value){
+      return Math.round(value * 100) / 100;
+    }
+
+    function measureVisualAst(ast){
+      const cfg = LADDER_VISUAL_CFG;
+      if(!ast || ast.type === "const") return { w:64, h:cfg.litHeight };
+      if(ast.type === "lit") return { w:cfg.litWidth, h:cfg.litHeight };
+      if(ast.type === "and"){
+        const children = ast.items.map(measureVisualAst);
+        return {
+          w: children.reduce((acc, item) => acc + item.w, 0) + cfg.seriesGap * Math.max(0, children.length - 1),
+          h: Math.max(...children.map(item => item.h), cfg.litHeight)
+        };
+      }
+      const children = ast.items.map(measureVisualAst);
+      return {
+        w: Math.max(...children.map(item => item.w), cfg.branchMinWidth) + cfg.parallelPadX * 2,
+        h: children.reduce((acc, item) => acc + item.h, 0) + cfg.branchGap * Math.max(0, children.length - 1)
+      };
+    }
+
+    function drawVisualLiteral(svg, ast, x, y, w, h){
+      const cy = y + h / 2;
+      const top = cy - 13;
+      const bottom = cy + 13;
+      const leftBar = x + 28;
+      const rightBar = x + w - 28;
+      appendSvgText(svg, x + w / 2, y + 12, getInputLabel(ast.index), "label");
+      appendSvgLine(svg, x, cy, leftBar, cy, "wire");
+      appendSvgLine(svg, leftBar, top, leftBar, bottom, "contact");
+      appendSvgLine(svg, rightBar, top, rightBar, bottom, "contact");
+      appendSvgLine(svg, rightBar, cy, x + w, cy, "wire");
+      if(ast.value === "0"){
+        svg.appendChild(createSvgNode("line", {
+          x1:round2(leftBar - 4),
+          y1:round2(bottom),
+          x2:round2(rightBar + 4),
+          y2:round2(top),
+          class:"contact"
+        }));
+      }
+    }
+
+    function drawVisualConst(svg, ast, x, y, w, h){
+      const cy = y + h / 2;
+      if(ast && ast.value){
+        appendSvgLine(svg, x, cy, x + w, cy, "wire");
+        appendSvgText(svg, x + w / 2, y + 12, "1", "label");
+        return;
+      }
+      const mid = x + w / 2;
+      appendSvgText(svg, x + w / 2, y + 12, "0", "label");
+      appendSvgLine(svg, x, cy, mid - 11, cy, "wire");
+      appendSvgLine(svg, mid + 11, cy, x + w, cy, "wire");
+      svg.appendChild(createSvgNode("circle", { cx:round2(mid - 11), cy:round2(cy), r:2.1, class:"open-gap" }));
+      svg.appendChild(createSvgNode("circle", { cx:round2(mid + 11), cy:round2(cy), r:2.1, class:"open-gap" }));
+    }
+
+    function drawVisualAst(svg, ast, x, y, w, h){
+      const cfg = LADDER_VISUAL_CFG;
+      if(!ast || ast.type === "const"){
+        drawVisualConst(svg, ast, x, y, w, h);
+        return;
+      }
+      if(ast.type === "lit"){
+        drawVisualLiteral(svg, ast, x, y, w, h);
+        return;
+      }
+      if(ast.type === "and"){
+        const measures = ast.items.map(measureVisualAst);
+        let cursorX = x;
+        ast.items.forEach((item, index) => {
+          const m = measures[index];
+          const childY = y + (h - m.h) / 2;
+          drawVisualAst(svg, item, cursorX, childY, m.w, m.h);
+          cursorX += m.w;
+          if(index < ast.items.length - 1){
+            appendSvgLine(svg, cursorX, y + h / 2, cursorX + cfg.seriesGap, y + h / 2, "wire");
+            cursorX += cfg.seriesGap;
+          }
+        });
+        return;
+      }
+
+      const measures = ast.items.map(measureVisualAst);
+      const midY = y + h / 2;
+      const splitX = x + cfg.parallelPadX;
+      const joinX = x + w - cfg.parallelPadX;
+      const innerWidth = Math.max(30, joinX - splitX);
+      const branchMidYs = [];
+      let cursorY = y;
+
+      appendSvgLine(svg, x, midY, splitX, midY, "wire");
+      appendSvgLine(svg, joinX, midY, x + w, midY, "wire");
+
+      ast.items.forEach((item, index) => {
+        const m = measures[index];
+        const childX = splitX + Math.max(0, (innerWidth - m.w) / 2);
+        const childY = cursorY;
+        const childMidY = childY + m.h / 2;
+        branchMidYs.push(childMidY);
+        appendSvgLine(svg, splitX, childMidY, childX, childMidY, "wire");
+        drawVisualAst(svg, item, childX, childY, m.w, m.h);
+        appendSvgLine(svg, childX + m.w, childMidY, joinX, childMidY, "wire");
+        cursorY += m.h;
+        if(index < ast.items.length - 1) cursorY += cfg.branchGap;
+      });
+
+      if(branchMidYs.length){
+        appendSvgLine(svg, splitX, branchMidYs[0], splitX, branchMidYs[branchMidYs.length - 1], "bus");
+        appendSvgLine(svg, joinX, branchMidYs[0], joinX, branchMidYs[branchMidYs.length - 1], "bus");
+      }
+    }
+
+    function drawVisualCoil(svg, x, y, w, h, label){
+      const cy = y + h / 2;
+      const inset = 24;
+      const leftX = x + inset;
+      const rightX = x + w - inset;
+      const topY = y + 5;
+      const bottomY = y + h - 5;
+      const leftPath = `M ${round2(leftX)} ${round2(topY)} Q ${round2(x + 6)} ${round2(cy)} ${round2(leftX)} ${round2(bottomY)}`;
+      const rightPath = `M ${round2(rightX)} ${round2(topY)} Q ${round2(x + w - 6)} ${round2(cy)} ${round2(rightX)} ${round2(bottomY)}`;
+      svg.appendChild(createSvgNode("path", { d:leftPath, class:"coil" }));
+      svg.appendChild(createSvgNode("path", { d:rightPath, class:"coil" }));
+      appendSvgText(svg, x + w / 2, cy + 1, label, "coil-label");
+    }
+
+    function renderVisualLadder(result){
+      ui.ladderVisualArea.innerHTML = "";
+      if(!result || !result.outputs || !result.outputs.length){
+        ui.ladderVisualArea.innerHTML = `<div class="ladder-placeholder">${t("placeholderDash")}</div>`;
+        return;
+      }
+
+      const cfg = LADDER_VISUAL_CFG;
+      result.outputs.forEach((out, index) => {
+        const ast = out.ast || makeLogicConst(0);
+        const net = measureVisualAst(ast);
+        const height = cfg.titleBand + Math.max(net.h, cfg.coilHeight) + cfg.rungPadY * 2;
+        const width = Math.max(
+          cfg.minSvgWidth,
+          cfg.railMargin * 2 + cfg.railGap * 2 + cfg.networkGap + net.w + cfg.coilGap + cfg.coilWidth + 40
+        );
+        const railLeft = cfg.railMargin;
+        const railRight = width - cfg.railMargin;
+        const centerY = cfg.titleBand + cfg.rungPadY + Math.max(net.h, cfg.coilHeight) / 2;
+        const topRail = cfg.titleBand + 6;
+        const bottomRail = height - 8;
+        const networkX = railLeft + cfg.railGap;
+        const networkY = centerY - net.h / 2;
+        const coilX = railRight - cfg.railGap - cfg.coilWidth;
+        const coilY = centerY - cfg.coilHeight / 2;
+        const networkEnd = networkX + net.w;
+
+        const card = document.createElement("div");
+        card.className = "ladder-rung-card";
+
+        const head = document.createElement("div");
+        head.className = "ladder-rung-head";
+        const title = document.createElement("div");
+        title.className = "ladder-rung-title";
+        title.textContent = t("visualRungTitle", { index: index + 1, output: out.outputName });
+        const meta = document.createElement("div");
+        meta.className = "ladder-rung-meta";
+        meta.textContent = `${out.outputName} → ${getLdOutputAlias(index)}`;
+        head.appendChild(title);
+        head.appendChild(meta);
+        card.appendChild(head);
+
+        const expr = document.createElement("pre");
+        expr.className = "ladder-rung-expression";
+        expr.textContent = `${out.outputName} = ${out.expression}`;
+        card.appendChild(expr);
+
+        const scroll = document.createElement("div");
+        scroll.className = "ladder-svg-scroll";
+        const svg = createSvgNode("svg", {
+          class:"ladder-svg",
+          width:round2(width),
+          height:round2(height),
+          viewBox:`0 0 ${round2(width)} ${round2(height)}`
+        });
+
+        appendSvgText(svg, 12, 16, out.outputName, "rung-name", "start");
+        appendSvgLine(svg, railLeft, topRail, railLeft, bottomRail, "rail");
+        appendSvgLine(svg, railRight, topRail, railRight, bottomRail, "rail");
+        appendSvgLine(svg, railLeft, centerY, networkX, centerY, "wire");
+        drawVisualAst(svg, ast, networkX, networkY, net.w, net.h);
+        appendSvgLine(svg, networkEnd, centerY, coilX, centerY, "wire");
+        drawVisualCoil(svg, coilX, coilY, cfg.coilWidth, cfg.coilHeight, out.outputName);
+        appendSvgLine(svg, coilX + cfg.coilWidth, centerY, railRight, centerY, "wire");
+
+        scroll.appendChild(svg);
+        card.appendChild(scroll);
+        ui.ladderVisualArea.appendChild(card);
+      });
+    }
+
+    /**
+     * Límite interno de elementos por subcircuito en LDmicro.
+     * El código fuente público usa MAX_ELEMENTS_IN_SUBCKT = 16.
+     */
+    const LDMICRO_MAX_SUBCKT_ITEMS = 16;
+
+    /**
+     * Crea un nodo hoja de serialización LDmicro.
+     */
+    function makeLdLeaf(line){
+      return { type:"leaf", line };
+    }
+
+    /**
+     * Crea un nodo SERIES.
+     */
+    function makeLdSeries(children){
+      return { type:"series", children:(children || []).filter(Boolean) };
+    }
+
+    /**
+     * Crea un nodo PARALLEL.
+     */
+    function makeLdParallel(children){
+      return { type:"parallel", children:(children || []).filter(Boolean) };
+    }
+
+    /**
+     * Convierte un literal del AST en una hoja CONTACTS para LDmicro.
+     */
+    function logicLitToLdLeaf(ast){
+      return makeLdLeaf(`CONTACTS ${getLdInputAlias(ast.index)} ${ast.value === "1" ? "0" : "1"}`);
+    }
+
+    /**
+     * Agrupa una lista en bloques de tamaño fijo.
+     */
+    function chunkArray(items, size){
+      const out = [];
+      for(let i = 0; i < items.length; i += size){
+        out.push(items.slice(i, i + size));
+      }
+      return out;
+    }
+
+    /**
+     * Construye un árbol SERIES anidado respetando el máximo de elementos por subcircuito.
+     */
+    function buildLdSeriesTreeFromNodes(nodes){
+      const list = (nodes || []).filter(Boolean);
+      if(list.length <= LDMICRO_MAX_SUBCKT_ITEMS){
+        return makeLdSeries(list);
+      }
+
+      const headCount = LDMICRO_MAX_SUBCKT_ITEMS - 1;
+      const head = list.slice(0, headCount);
+      const tail = list.slice(headCount);
+      return makeLdSeries([
+        ...head,
+        buildLdSeriesTreeFromNodes(tail)
+      ]);
+    }
+
+    /**
+     * Construye un árbol PARALLEL anidado respetando el máximo de elementos por subcircuito.
+     */
+    function buildLdParallelTreeFromNodes(nodes){
+      const list = (nodes || []).filter(Boolean);
+      if(list.length <= LDMICRO_MAX_SUBCKT_ITEMS){
+        return makeLdParallel(list);
+      }
+
+      const groups = chunkArray(list, LDMICRO_MAX_SUBCKT_ITEMS);
+      const wrapped = groups.map(group => {
+        if(group.length === 1) return group[0];
+        return makeLdSeries([buildLdParallelTreeFromNodes(group)]);
+      });
+      return buildLdParallelTreeFromNodes(wrapped);
+    }
+
+    /**
+     * Convierte el AST lógico factorizado a la red interna usada para serializar .ld.
+     */
+    function buildLdNetworkFromAst(ast){
+      if(!ast) return makeLdLeaf("OPEN");
+      if(ast.type === "const") return makeLdLeaf(ast.value ? "SHORT" : "OPEN");
+      if(ast.type === "lit") return logicLitToLdLeaf(ast);
+      if(ast.type === "and") return buildLdSeriesTreeFromNodes(ast.items.map(buildLdNetworkFromAst));
+      return buildLdParallelTreeFromNodes(ast.items.map(buildLdNetworkFromAst));
+    }
+
+    /**
+     * Genera un árbol de rung raíz para una salida concreta a partir del AST factorizado.
+     */
+    function buildLdRungTreeForOutput(outIndex, ast){
+      const coilName = getLdOutputAlias(outIndex);
+      const network = buildLdNetworkFromAst(ast || makeLogicConst(0));
+
+      if(network && network.type === "series"){
+        return makeLdSeries([
+          ...network.children,
+          makeLdLeaf(`COIL ${coilName} 0 0 0`)
+        ]);
+      }
+
+      return makeLdSeries([
+        network,
+        makeLdLeaf(`COIL ${coilName} 0 0 0`)
+      ]);
+    }
+    /**
+     * Serializa un nodo LDmicro con la convención de sangría usada por la app.
+     */
+    function serializeLdNode(node, depth, lines){
+      const indent = "  ".repeat(depth);
+
+      if(!node) return;
+
+      if(node.type === "leaf"){
+        lines.push(`${indent}${node.line}`);
+        return;
+      }
+
+      if(node.type === "series"){
+        if(depth === 0) lines.push("RUNG");
+        else lines.push(`${indent}SERIES`);
+        node.children.forEach(child => serializeLdNode(child, depth + 1, lines));
+        lines.push(`${indent}END`);
+        return;
+      }
+
+      lines.push(`${indent}PARALLEL`);
+      node.children.forEach(child => serializeLdNode(child, depth + 1, lines));
+      lines.push(`${indent}END`);
+    }
+
+    /**
+     * Genera el archivo .ld en formato texto compatible con LDmicro.
+     * Esta versión solo ajusta el encabezado y el empaquetado del archivo,
+     * manteniendo intacta toda la lógica previa de la app.
+     */
+    function buildLdFile(result){
+      const cycle = clamp(parseInt(ui.cycleTime.value, 10) || 10000, 1000, 1000000);
+      const crystal = clamp(parseInt(ui.crystal.value, 10) || 4000000, 1, 100000000);
+      const baud = clamp(parseInt(ui.baud.value, 10) || 2400, 0, 1000000);
+
+      const lines = [];
+      lines.push("LDmicro0.1");
+      lines.push(`CYCLE=${cycle}`);
+      lines.push(`CRYSTAL=${crystal}`);
+      lines.push(`BAUD=${baud}`);
+      lines.push("IO LIST");
+
+      for(let i = 0; i < appState.numInputs; i++){
+        lines.push(` ${getLdInputAlias(i)} at 0`);
+      }
+      for(let i = 0; i < appState.numOutputs; i++){
+        lines.push(` ${getLdOutputAlias(i)} at 0`);
+      }
+
+      lines.push("END");
+      lines.push("PROGRAM");
+
+      result.outputs.forEach((out, outIndex) => {
+        const rungTree = buildLdRungTreeForOutput(outIndex, out.ast);
+        serializeLdNode(rungTree, 0, lines);
+      });
+
+      return lines.join("\r\n") + "\r\n";
+    }
+
+    /**
+     * Construye el TXT exportable.
+     */
+    function buildTxtFile(result){
+      const blocks = [];
+      const ldExactText = buildLdFile(result);
+      blocks.push(t("txtTitle"));
+      blocks.push("");
+      blocks.push(t("txtSummary"));
+      blocks.push(t("txtInputs", { value: appState.numInputs }));
+      blocks.push(t("txtOutputs", { value: appState.numOutputs }));
+      blocks.push(t("txtRows", { value: appState.rows.length }));
+      blocks.push(t("txtMode", { value: result.mode }));
+      blocks.push("");
+
+      blocks.push(t("txtExpressions"));
+      result.outputs.forEach((out, i) => {
+        blocks.push(`${getOutputLabel(i)} = ${out.expression}`);
+      });
+      blocks.push("");
+
+      blocks.push(t("txtAscii"));
+      result.outputs.forEach((out, i) => {
+        blocks.push(buildAsciiForOutput(getOutputLabel(i), out.ast));
+        blocks.push("");
+      });
+
+      blocks.push(t("txtLdPerRung"));
+      result.outputs.forEach((out, i) => {
+        const rungLines = [];
+        const rungTree = buildLdRungTreeForOutput(i, out.ast);
+        serializeLdNode(rungTree, 0, rungLines);
+        blocks.push(`; ${getOutputLabel(i)} -> ${getLdOutputAlias(i)}`);
+        blocks.push(rungLines.join("\n"));
+        blocks.push("");
+      });
+
+      blocks.push(t("txtMapping"));
+      for(let i = 0; i < appState.numInputs; i++) blocks.push(`${getInputLabel(i)} -> ${getLdInputAlias(i)}`);
+      for(let i = 0; i < appState.numOutputs; i++) blocks.push(`${getOutputLabel(i)} -> ${getLdOutputAlias(i)}`);
+      blocks.push("");
+
+      blocks.push(t("txtVerification"));
+      blocks.push(t("txtVisibleOutputs", { value: appState.outputLabels.join(", ") }));
+      blocks.push(t("txtExportedCoils", { value: appState.outputLabels.map((_, idx) => getLdOutputAlias(idx)).join(", ") }));
+      blocks.push(t("txtNoExtraCoils"));
+      blocks.push(t("txtNoExtraRelays"));
+      blocks.push(t("txtSameSerializer"));
+      blocks.push("");
+      blocks.push(t("txtLdFull"));
+      blocks.push(ldExactText);
+
+      return blocks.join("\n");
+    }
+
+    /**
+     * Ejecuta toda la cadena de análisis.
+     */
+    function analyze(){
+      const semantics = getLogicMode();
+      const algorithm = semantics === "industrial" ? "cobertura-flexible" : chooseMinimizationMode(appState.numInputs, appState.rows);
+      const outputs = [];
+      const warnings = [];
+      const errors = [];
+      let totalContacts = 0;
+      let totalRungs = 0;
+
+      const duplicateConflicts = detectDuplicateRowOutputConflicts(appState.rows);
+      if(duplicateConflicts.length){
+        ui.statusArea.className = "status bad";
+        ui.statusArea.textContent = t("statusDuplicateConflict");
+        ui.expressionsPre.textContent = formatDuplicateConflicts(duplicateConflicts);
+        ui.asciiPre.textContent = t("noLadderDuplicate");
+        ui.ladderVisualArea.innerHTML = `<div class="ladder-placeholder">${t("noVisualDuplicate")}</div>`;
+        ui.ldPre.textContent = t("noLdDuplicate");
+        ui.consistencyArea.className = "status bad";
+        ui.consistencyArea.textContent = t("consistencyDuplicate");
+        ui.mappingArea.innerHTML = "";
+        ui.modeKpi.textContent = describeMode(semantics, algorithm);
+        ui.rungsKpi.textContent = "0";
+        ui.contactsKpi.textContent = "0";
+        appState.lastResult = null;
+        ui.downloadTxtBtn.disabled = true;
+        ui.downloadLdBtn.disabled = true;
+        return;
+      }
+
+      const coverageConflicts = detectCoverageRowOutputConflicts(appState.rows);
+      if(coverageConflicts.length){
+        ui.statusArea.className = "status bad";
+        ui.statusArea.textContent = t("statusCoverageConflict");
+        ui.expressionsPre.textContent = formatCoverageConflicts(coverageConflicts);
+        ui.asciiPre.textContent = t("noLadderCoverage");
+        ui.ladderVisualArea.innerHTML = `<div class="ladder-placeholder">${t("noVisualCoverage")}</div>`;
+        ui.ldPre.textContent = t("noLdCoverage");
+        ui.consistencyArea.className = "status bad";
+        ui.consistencyArea.textContent = t("consistencyCoverage");
+        ui.mappingArea.innerHTML = "";
+        ui.modeKpi.textContent = describeMode(semantics, algorithm);
+        ui.rungsKpi.textContent = "0";
+        ui.contactsKpi.textContent = "0";
+        appState.lastResult = null;
+        ui.downloadTxtBtn.disabled = true;
+        ui.downloadLdBtn.disabled = true;
+        return;
+      }
+
+      for(let outIndex = 0; outIndex < appState.numOutputs; outIndex++){
+        const minimized = semantics === "industrial"
+          ? minimizePositiveOnly(appState.rows, outIndex)
+          : (algorithm === "exacto"
+              ? minimizeExact(appState.numInputs, appState.rows, outIndex)
+              : minimizeScalable(appState.numInputs, appState.rows, outIndex));
+
+        if(!minimized.ok){
+          errors.push(`${getOutputLabel(outIndex)}: se detectaron conflictos lógicos.\n${formatConflicts(minimized.conflicts)}`);
+          continue;
+        }
+
+        const cubes = minimized.cubes;
+        const ast = factorCubesForLadder(cubes);
+        const expression = logicAstToExpression(ast, appState.inputLabels);
+        outputs.push({
+          cubes,
+          ast,
+          expression,
+          outputName: getOutputLabel(outIndex),
+          method: algorithm
+        });
+
+        totalRungs += 1;
+        totalContacts += countAstContacts(ast);
+
+        if(semantics === "strict" && algorithm !== "exacto" && appState.numInputs > 12){
+          warnings.push(t("warningScalable", { output: getOutputLabel(outIndex) }));
+        }
+      }
+
+      if(errors.length){
+        ui.statusArea.className = "status bad";
+        ui.statusArea.textContent = t("statusStrictConflict");
+        ui.expressionsPre.textContent = errors.join("\n\n");
+        ui.asciiPre.textContent = t("noLadderStrict");
+        ui.ladderVisualArea.innerHTML = `<div class="ladder-placeholder">${t("noVisualStrict")}</div>`;
+        ui.ldPre.textContent = t("noLdStrict");
+        ui.consistencyArea.className = "status bad";
+        ui.consistencyArea.textContent = t("consistencyStrict");
+        ui.mappingArea.innerHTML = "";
+        ui.modeKpi.textContent = describeMode(semantics, algorithm);
+        ui.rungsKpi.textContent = "0";
+        ui.contactsKpi.textContent = "0";
+        appState.lastResult = null;
+        ui.downloadTxtBtn.disabled = true;
+        ui.downloadLdBtn.disabled = true;
+        return;
+      }
+
+      const result = { mode: describeMode(semantics, algorithm), semantics, algorithm, outputs, warnings, totalContacts, totalRungs };
+      result.ld = buildLdFile(result);
+      result.txt = buildTxtFile(result);
+
+      const exprLines = outputs.map((out) => `${out.outputName} = ${out.expression}`);
+      ui.expressionsPre.textContent = exprLines.join("\n");
+
+      const asciiBlocks = outputs.map((out) => buildAsciiForOutput(out.outputName, out.ast));
+      ui.asciiPre.textContent = asciiBlocks.join("\n\n");
+
+      ui.ldPre.textContent = result.ld;
+      renderVisualLadder(result);
+
+      ui.statusArea.className = warnings.length ? "status warn" : "status ok";
+      ui.statusArea.textContent = warnings.length
+        ? t("statusCompletedWarnings", { warnings: warnings.join(" ") })
+        : (semantics === "industrial"
+            ? t("statusCompletedIndustrial")
+            : t("statusCompletedStrict"));
+
+      ui.consistencyArea.className = warnings.length ? "status warn" : "status ok";
+      ui.consistencyArea.textContent =
+        t("consistencyOk", { outputs: appState.outputLabels.join(", "), coils: appState.outputLabels.map((_, idx) => getLdOutputAlias(idx)).join(", ") });
+
+      renderMapping();
+
+      ui.modeKpi.textContent = describeMode(semantics, algorithm);
+      ui.rungsKpi.textContent = String(totalRungs);
+      ui.contactsKpi.textContent = String(totalContacts);
+
+      appState.lastResult = result;
+      ui.downloadTxtBtn.disabled = false;
+      ui.downloadLdBtn.disabled = false;
+    }
+
+    /**
+     * Dibuja el mapeo entre nombres visibles y alias LDmicro.
+     */
+    function renderMapping(){
+      ui.mappingArea.innerHTML = "";
+      for(let i = 0; i < appState.numInputs; i++){
+        const div = document.createElement("div");
+        div.className = "mapping-item";
+        div.textContent = t("mappingInput", { label: getInputLabel(i), alias: getLdInputAlias(i) });
+        ui.mappingArea.appendChild(div);
+      }
+      for(let i = 0; i < appState.numOutputs; i++){
+        const div = document.createElement("div");
+        div.className = "mapping-item";
+        div.textContent = t("mappingOutput", { label: getOutputLabel(i), alias: getLdOutputAlias(i) });
+        ui.mappingArea.appendChild(div);
+      }
+    }
+
+    /**
+     * Importa tabla TSV desde el área de texto.
+     * Si hay encabezados, detecta entradas/salidas por prefijo.
+     */
+    function importFromPaste(){
+      const raw = ui.pasteArea.value.replace(/\r/g, "").trim();
+      if(!raw){
+        alert(t("alertNoTextImport"));
+        return;
+      }
+
+      const lines = raw.split("\n").filter(line => line.trim() !== "");
+      if(!lines.length){
+        alert(t("alertNoValidRowsImport"));
+        return;
+      }
+
+      const rows = lines.map(line => line.split("\t"));
+      const maybeHeader = rows[0];
+      const tokenLooksLikeHeader = maybeHeader.some(cell => /[A-Za-z]/.test(cell) && !/^[01xX]?$/.test(cell.trim()));
+
+      let numInputs = appState.numInputs;
+      let numOutputs = appState.numOutputs;
+      let dataStartIndex = 0;
+      let inputIndices = [];
+      let outputIndices = [];
+      let importedInputLabels = appState.inputLabels.slice();
+      let importedOutputLabels = appState.outputLabels.slice();
+
+      if(tokenLooksLikeHeader){
+        dataStartIndex = 1;
+        maybeHeader.forEach((cell, idx) => {
+          const label = String(cell).trim();
+          const upper = label.toUpperCase();
+          if(/^(S|Z|Y)/.test(upper)) outputIndices.push(idx);
+          else inputIndices.push(idx);
+        });
+        importedInputLabels = inputIndices.map(idx => normalizeLabel(maybeHeader[idx], defaultInputLabel(idx)));
+        importedOutputLabels = outputIndices.map(idx => normalizeLabel(maybeHeader[idx], defaultOutputLabel(idx)));
+        if(outputIndices.length === 0){
+          alert(t("alertHeaderNoOutputs"));
+          return;
+        }
+        numInputs = inputIndices.length;
+        numOutputs = outputIndices.length;
+      }else{
+        const totalCols = Math.max(...rows.map(r => r.length));
+        if(totalCols !== appState.numInputs + appState.numOutputs){
+          alert(t("alertTableNoMatch"));
+          return;
+        }
+        inputIndices = Array.from({length:appState.numInputs}, (_, i) => i);
+        outputIndices = Array.from({length:appState.numOutputs}, (_, i) => appState.numInputs + i);
+      }
+
+      const importedRows = [];
+      for(let i = dataStartIndex; i < rows.length; i++){
+        const r = rows[i];
+        const inputs = inputIndices.map(idx => normalizeInputValue(r[idx] ?? ""));
+        const outputs = outputIndices.map(idx => normalizeOutputValue(r[idx] ?? ""));
+        if(inputs.some(v => v === null) || outputs.some(v => v === null)){
+          alert(t("alertInvalidValueRow", { row: i + 1 }));
+          return;
+        }
+        importedRows.push({ inputs, outputs });
+      }
+
+      if(!importedRows.length){
+        alert(t("alertNoDataRows"));
+        return;
+      }
+
+      appState.numInputs = numInputs;
+      appState.numOutputs = numOutputs;
+      appState.inputLabels = importedInputLabels;
+      appState.outputLabels = importedOutputLabels;
+      appState.rows = importedRows;
+      syncLabels();
+
+      ui.numInputs.value = String(numInputs);
+      ui.numOutputs.value = String(numOutputs);
+      ui.rowCount.value = String(importedRows.length);
+
+      renderTable();
+      clearResultPreview();
+    }
+
+    /**
+     * Enlaza eventos.
+     */
+    function bindEvents(){
+      ui.buildBtn.addEventListener("click", () => {
+        applyDimensions(ui.numInputs.value, ui.numOutputs.value, ui.rowCount.value);
+      });
+
+      ui.addRowBtn.addEventListener("click", () => {
+        appState.rows.push(makeDefaultRow(appState.numInputs, appState.numOutputs));
+        ui.rowCount.value = String(appState.rows.length);
+        renderTable();
+        clearResultPreview();
+      });
+
+      ui.removeRowBtn.addEventListener("click", () => {
+        if(appState.rows.length <= 1) return;
+        appState.rows.pop();
+        ui.rowCount.value = String(appState.rows.length);
+        renderTable();
+        clearResultPreview();
+      });
+
+      ui.clearBtn.addEventListener("click", () => {
+        applyDimensions(ui.numInputs.value, ui.numOutputs.value, ui.rowCount.value);
+      });
+
+      ui.loadExampleBtn.addEventListener("click", loadExample);
+      ui.importBtn.addEventListener("click", importFromPaste);
+      ui.logicMode.addEventListener("change", clearResultPreview);
+      if(ui.langSelect){
+        ui.langSelect.addEventListener("change", () => setLanguage(ui.langSelect.value));
+      }
+      if(ui.aboutBtn){
+        ui.aboutBtn.addEventListener("click", openAboutModal);
+      }
+      if(ui.aboutCloseBtn){
+        ui.aboutCloseBtn.addEventListener("click", closeAboutModal);
+      }
+      if(ui.aboutModal){
+        ui.aboutModal.addEventListener("click", (ev) => {
+          if(ev.target === ui.aboutModal) closeAboutModal();
+        });
+      }
+      document.addEventListener("keydown", (ev) => {
+        if(ev.key === "Escape") closeAboutModal();
+      });
+      ui.analyzeBtn.addEventListener("click", analyze);
+
+      ui.exportTableBtn.addEventListener("click", () => {
+        downloadText("tabla_logica.tsv", buildTSV());
+      });
+
+      ui.downloadTxtBtn.addEventListener("click", () => {
+        if(!appState.lastResult) return;
+        downloadText("ladder_ascii.txt", appState.lastResult.txt);
+      });
+
+      ui.downloadLdBtn.addEventListener("click", () => {
+        if(!appState.lastResult) return;
+        downloadText("proyecto_ldmicro.ld", appState.lastResult.ld);
+      });
+    }
+
+    /**
+     * Inicialización.
+     */
+    function init(){
+      bindEvents();
+      syncLabels();
+      try {
+        const savedLang = localStorage.getItem("reductor_booleano_ldmicro_lang");
+        if(savedLang && I18N[savedLang]) appState.lang = savedLang;
+      } catch(err){}
+      if(ui.langSelect) ui.langSelect.value = appState.lang;
+      applyStaticTranslations();
+      applyDimensions(ui.numInputs.value, ui.numOutputs.value, ui.rowCount.value);
+    }
+
+    init();
+  </script>
+</body>
+</html>
