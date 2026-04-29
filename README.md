@@ -1,136 +1,136 @@
-# 🔧 Reductor Booleano → Ladder LDmicro
+# 🔧 Boolean to Ladder Reducer (LDmicro)
 
-Aplicación web HTML5 (archivo único) para capturar, validar, minimizar y convertir tablas lógicas booleanas a lógica Ladder compatible con LDmicro.
+Single-file HTML5 web application to capture, validate, minimize, and convert boolean logic tables into Ladder Logic compatible with LDmicro.
 
 ---
 
-## 🚀 Características
+## 🚀 Features
 
-- Importación de tablas (Excel / ODT / copiar-pegar)
-- Validación de consistencia lógica
-- Minimización booleana avanzada
-- Optimización específica para Ladder (PLC)
-- Generación de:
+- Table import (Excel / ODT / copy-paste)
+- Logical consistency validation
+- Advanced boolean minimization
+- Optimization specifically for Ladder (PLC)
+- Output generation:
   - Ladder ASCII
-  - Vista visual estilo LDmicro
-  - Archivo `.ld`
-  - Archivo `.txt`
-- Interfaz multilenguaje:
-  - Español
+  - Visual Ladder view (LDmicro style)
+  - `.ld` file
+  - `.txt` file
+- Multilanguage interface:
+  - Spanish
   - English
-  - Italiano
-- Detección de errores:
-  - filas duplicadas
-  - solapamientos ambiguos
+  - Italian
+- Error detection:
+  - duplicated rows
+  - ambiguous overlaps
 
 ---
 
-## 🧠 Funcionamiento
+## 🧠 How it works
 
-### 1. Entrada
-Entradas: E1..En  
-Salidas: S1..Sn  
+### 1. Input
+Inputs: E1..En  
+Outputs: S1..Sn  
 
-Valores:
+Allowed values:
 - 1 → TRUE  
 - 0 → FALSE  
-- X / vacío → Don't Care  
+- X / empty → Don't Care  
 
 ---
 
-### 2. Validación
+### 2. Validation
 
-Detecta:
-- duplicados contradictorios
-- conflictos por cobertura (fila general vs específica)
-
----
-
-### 3. Minimización
-
-- absorción lógica
-- eliminación de redundancias
-- reducción de términos
+Detects:
+- contradictory duplicates
+- coverage conflicts (general vs specific row)
 
 ---
 
-### 4. Optimización Ladder
+### 3. Minimization
 
-- factor común
-- reducción de contactos
-- generación de ramas paralelas
+- logical absorption
+- redundancy elimination
+- term reduction
 
-Ejemplo:
+---
+
+### 4. Ladder Optimization
+
+- common factor extraction
+- contact reduction
+- parallel branch generation
+
+Example:
 
 S1 = ¬E10 · (E2 + E4 + E1·¬E5)
 
 ---
 
-### 5. Salida
+### 5. Output
 
 - Ladder ASCII
-- Vista visual
-- Archivo `.ld`
-- Archivo `.txt`
+- Visual view
+- `.ld` file
+- `.txt` file
 
 ---
 
-## 📊 Tipos de tablas
+## 📊 Supported table types
 
-### ✔️ Válidas
-- con Don't Care
-- parciales (reglas)
-- completas
+### ✔️ Valid
+- with Don't Care
+- partial (rule-based)
+- full truth tables
 
-### ❌ Inválidas
-- duplicadas contradictorias
-- solapamientos inconsistentes
-
----
-
-## ⚠️ Manejo de errores
-
-La app bloquea resultados si detecta ambigüedad lógica.
+### ❌ Invalid
+- contradictory duplicates
+- inconsistent overlaps
 
 ---
 
-## 🧱 Arquitectura
+## ⚠️ Error Handling
+
+The app blocks output if logical ambiguity is detected.
+
+---
+
+## 🧱 Architecture
 
 - HTML5 + CSS + JS
-- archivo único
-- sin dependencias
+- single file
+- no dependencies
 
 ---
 
-## 📦 Uso
+## 📦 Usage
 
-1. Abrir HTML
-2. Ingresar tabla
-3. Minimizar
-4. Exportar
-
----
-
-## 🌐 Idiomas
-
-Español / English / Italiano
+1. Open the HTML file
+2. Enter or paste the table
+3. Run minimization
+4. Export results
 
 ---
 
-## 👤 Autor
+## 🌐 Languages
+
+Spanish / English / Italian
+
+---
+
+## 👤 Author
 
 Raymundo Ortiz
 
 ---
 
-## 🧾 Versión
+## 🧾 Version
 
 v16
 
 ---
 
-## 🚀 Futuro
+## 🚀 Future
 
-- prioridad de reglas
-- importación directa Excel
-- editor Ladder avanzado
+- rule priority mode
+- direct Excel import
+- advanced Ladder editor
