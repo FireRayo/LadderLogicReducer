@@ -1,4 +1,4 @@
-# 🔧 Boolean to Ladder Reducer (LDmicro)
+# 🔧 Ladder Logic Reducer
 
 Single-file HTML5 web application to capture, validate, minimize, and convert boolean logic tables into Ladder Logic compatible with LDmicro.
 
@@ -13,7 +13,7 @@ Single-file HTML5 web application to capture, validate, minimize, and convert bo
 - Output generation:
   - Ladder ASCII
   - Visual Ladder view (LDmicro style)
-  - `.ld` file
+  - `.ld` file (https://cq.cx/ladder.pl)
   - `.txt` file
 - Multilanguage interface:
   - Spanish
@@ -117,20 +117,8 @@ Spanish / English / Italian
 
 ---
 
-## 👤 Author
-
-Raymundo Ortiz
-
----
-
 ## 🧾 Version
 
-v16
+V1.0
 
 ---
-
-## 🚀 Future
-
-- rule priority mode
-- direct Excel import
-- advanced Ladder editor
