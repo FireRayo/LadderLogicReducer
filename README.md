@@ -122,3 +122,7 @@ Spanish / English / Italian
 V1.0
 
 ---
+
+## Link to use the app
+
+[https://firerayo.github.io/LadderLogicReducer/](https://firerayo.github.io/LadderLogicReducer/)
