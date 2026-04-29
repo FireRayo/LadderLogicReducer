@@ -1463,17 +1463,17 @@ ${t('aboutAuthorLabel')}: ${APP_AUTHOR}`;
     function loadExample(){
       appState.numInputs = 4;
       appState.numOutputs = 2;
-      appState.inputLabels = ["E1","E2","E3","E4"];
+      appState.inputLabels = ["E1","E2","E3","E4","E5","E6","E7","E8","E9","E10"];
       appState.outputLabels = ["S1","S2"];
       appState.rows = [
-        { inputs:["1","1","X","0"], outputs:["1","0"] },
-        { inputs:["1","0","X","0"], outputs:["0","1"] },
-        { inputs:["X","1","1","X"], outputs:["1","0"] },
-        { inputs:["0","X","1","1"], outputs:["0","1"] },
-        { inputs:["X","X","0","0"], outputs:["0","0"] },
-        { inputs:["1","1","1","X"], outputs:["1","1"] },
-        { inputs:["0","0","X","1"], outputs:["0","1"] },
-        { inputs:["X","0","0","X"], outputs:["0","0"] }
+        { inputs:["X","1","X","X","X","X","X","X","X","0"], outputs:["1","0"] },
+        { inputs:["X","X","X","1","X","X","X","X","X","0"], outputs:["1","0"] },
+        { inputs:["X","0","X","0","1","X","X","0","0","0"], outputs:["0","1"] },
+        { inputs:["X","0","X","0","X","X","1","0","0","0"], outputs:["0","1"] },
+        { inputs:["X","0","X","0","X","0","X","0","0","0"], outputs:["0","1"] },
+        { inputs:["1","X","X","X","0","X","X","X","X","0"], outputs:["1","0"] },
+        { inputs:["1","0","X","0","1","X","X","0","0","0"], outputs:["0","1"] },
+        { inputs:["X","X","1","X","X","X","X","X","X","0"], outputs:["0","1"] }
       ];
       ui.numInputs.value = "4";
       ui.numOutputs.value = "2";
