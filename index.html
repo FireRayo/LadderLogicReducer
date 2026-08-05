@@ -822,7 +822,7 @@
          *   añade su diccionario completo dentro de TRADUCCIONES.
          */
         const CONFIG = Object.freeze({
-            VERSION: "V4.0",
+            VERSION: "V4.1",
             AUTOR: "Raymundo Ortiz",
             MAX_ENTRADAS: 40,
             MAX_SALIDAS: 20,
@@ -839,8 +839,6 @@
             NOMBRE_ARCHIVO_TXT: "ladder_logic.txt",
             NOMBRE_ARCHIVO_LD: "ladder_logic.ld",
             ANCHO_CONTACTO_SVG: 112,
-            ALTO_RAMA_SVG: 72,
-            MARGEN_SVG: 52,
             ANCHO_BOBINA_SVG: 100,
             QM_MAX_VARIABLES: 12,
             QM_MAX_PRIMOS: 2400,
@@ -856,8 +854,9 @@
             FACTORIZACION_CANDIDATOS_NIVEL_INICIAL: 30,
             FACTORIZACION_CANDIDATOS_NIVEL_PROFUNDO: 12,
             MAX_AUXILIARES_COMPARTIDOS: 12,
-            MAX_ELEMENTOS_FACTOR_COMPARTIDO: 5,
             MAX_CANDIDATOS_COMPARTIDOS_POR_SALIDA: 1500,
+            MAX_INTERSECCIONES_COMPARTIDAS: 6000,
+            MAX_PARES_INTERSECCION_COMPARTIDA: 200000,
             MAX_CANDIDATOS_COMPARTIDOS: 3000,
             PREFIJO_RELE_AUXILIAR: "M",
             COSTO_LADDER: Object.freeze({
@@ -943,7 +942,7 @@
                 rungs: "Rungs",
                 contactos: "Contactos",
                 notas: "Notas técnicas",
-                notasTexto: "<b>Industrial flexible:</b> cada salida se minimiza usando únicamente las filas donde dicha salida vale 1. Las filas con salida 0 no se consideran prohibiciones globales. Este es el criterio utilizado por la aplicación.",
+                notasTexto: "<b>Industrial flexible:</b> cada salida se minimiza usando únicamente las filas donde dicha salida vale 1. Las filas con salida 0 no se consideran prohibiciones globales. Después de minimizar cada salida, la aplicación detecta factores comunes completos entre salidas y crea relés auxiliares solo cuando reducen el costo Ladder total.",
                 resultado: "3) Resultado",
                 sinAnalisis: "Aún no se ha ejecutado el análisis.",
                 expresiones: "Expresiones booleanas minimizadas",
@@ -994,7 +993,7 @@
                 rungs: "Rungs",
                 contactos: "Contacts",
                 notas: "Technical notes",
-                notasTexto: "<b>Flexible industrial:</b> each output is minimized using only rows where that output equals 1. Rows with output 0 are not treated as global prohibitions.",
+                notasTexto: "<b>Flexible industrial:</b> each output is minimized using only rows where that output equals 1. Rows with output 0 are not treated as global prohibitions. After minimizing each output, the application detects complete common factors across outputs and creates auxiliary relays only when they reduce total Ladder cost.",
                 resultado: "3) Result",
                 sinAnalisis: "Analysis has not been run yet.",
                 expresiones: "Minimized Boolean expressions",
@@ -1045,7 +1044,7 @@
                 rungs: "Rung",
                 contactos: "Contatti",
                 notas: "Note tecniche",
-                notasTexto: "<b>Industriale flessibile:</b> ogni uscita viene minimizzata usando solo le righe in cui tale uscita vale 1. Le righe con uscita 0 non sono considerate divieti globali.",
+                notasTexto: "<b>Industriale flessibile:</b> ogni uscita viene minimizzata usando solo le righe in cui tale uscita vale 1. Le righe con uscita 0 non sono considerate divieti globali. Dopo la minimizzazione di ogni uscita, l'applicazione rileva i fattori comuni completi tra le uscite e crea relè ausiliari solo quando riducono il costo Ladder totale.",
                 resultado: "3) Risultato",
                 sinAnalisis: "L'analisi non è stata ancora eseguita.",
                 expresiones: "Espressioni booleane minimizzate",
@@ -2274,14 +2273,20 @@
 
         /**
          * Extrae subtérminos comunes entre salidas mediante relés auxiliares.
-         * Detecta árboles idénticos y subconjuntos directos de redes AND/OR, por
-         * ejemplo E1·E2 dentro de E1·E2·E3 y E1·E2·E4.
+         * Detecta árboles idénticos e intersecciones comunes completas de redes
+         * AND/OR, sin limitar el factor compartido a una cantidad fija de contactos.
          */
         class OptimizadorCompartidoSalidas {
-            optimizar(resultados) {
+            optimizar(resultados, nombresReservadosIniciales = []) {
                 const auxiliares = [];
                 const factorizador = new FactorizadorExpresiones();
                 const calculador = new CalculadorCostoLadder();
+                const nombresReservados = new Set(
+                    nombresReservadosIniciales.map((nombre) => {
+                        return String(nombre).toLocaleUpperCase();
+                    })
+                );
+                let siguienteIndiceAuxiliar = 1;
 
                 for (
                     let ronda = 0;
@@ -2295,10 +2300,14 @@
                     const costoAntes = resultados.reduce((total, resultado) => {
                         return total + calculador.calcular(resultado.ast).total;
                     }, 0);
+                    const nombreDisponible = this.obtenerNombreAuxiliarDisponible(
+                        siguienteIndiceAuxiliar,
+                        nombresReservados
+                    );
+                    const nombre = nombreDisponible.nombre;
                     let mejor = null;
 
                     candidatos.forEach((candidato) => {
-                        const nombre = `${CONFIG.PREFIJO_RELE_AUXILIAR}${auxiliares.length + 1}`;
                         const reemplazo = { tipo: "aux", nombre };
                         const modificados = resultados.map((resultado) => {
                             return this.reemplazarCandidato(
@@ -2355,6 +2364,9 @@
                         ast: mejor.candidato.nodo,
                         ahorroCosto: mejor.ahorro
                     });
+                    nombresReservados.add(mejor.nombre.toLocaleUpperCase());
+                    siguienteIndiceAuxiliar = nombreDisponible.siguienteIndice;
+
                     resultados.forEach((resultado, indice) => {
                         resultado.ast = mejor.modificados[indice];
                     });
@@ -2363,29 +2375,77 @@
                 return auxiliares;
             }
 
+            obtenerNombreAuxiliarDisponible(indiceInicial, nombresReservados) {
+                let indice = Math.max(1, Number(indiceInicial) || 1);
+                let nombre;
+
+                do {
+                    nombre = `${CONFIG.PREFIJO_RELE_AUXILIAR}${indice}`;
+                    indice += 1;
+                } while (nombresReservados.has(nombre.toLocaleUpperCase()));
+
+                return {
+                    nombre,
+                    siguienteIndice: indice
+                };
+            }
+
+            /**
+             * Genera candidatos compartidos sin enumerar combinaciones de tamaño
+             * fijo. Primero registra subárboles idénticos y después calcula el cierre
+             * de intersecciones entre los hijos de nodos AND/OR de salidas distintas.
+             *
+             * Esto permite detectar factores comunes completos de cualquier longitud
+             * práctica (por ejemplo seis, diez o más contactos comunes), evitando la
+             * enumeración combinatoria de todos los subconjuntos posibles.
+             */
             generarCandidatos(resultados, factorizador) {
                 const mapaGlobal = new Map();
+                const descriptoresPorTipo = {
+                    and: [],
+                    or: []
+                };
 
                 resultados.forEach((resultado, indiceSalida) => {
-                    const mapaSalida = new Map();
+                    const descriptores = [];
 
-                    this.recolectarCandidatosNodo(
+                    this.recolectarNodosCompuestos(
                         resultado.ast,
                         indiceSalida,
-                        mapaSalida,
+                        descriptores,
                         factorizador
                     );
 
-                    mapaSalida.forEach((candidato, clave) => {
-                        if (!mapaGlobal.has(clave)) {
-                            mapaGlobal.set(clave, {
-                                ...candidato,
-                                salidas: new Set()
-                            });
-                        }
+                    descriptores.forEach((descriptor) => {
+                        const claveExacta = `exacto:${descriptor.claveNodo}`;
 
-                        mapaGlobal.get(clave).salidas.add(indiceSalida);
+                        this.registrarCandidatoGlobal(
+                            mapaGlobal,
+                            {
+                                tipoCoincidencia: "exacto",
+                                clave: claveExacta,
+                                nodo: descriptor.nodo,
+                                contactos: descriptor.contactos
+                            },
+                            indiceSalida
+                        );
+
+                        if (
+                            (descriptor.tipo === "and" || descriptor.tipo === "or")
+                            && descriptor.clavesHijos.length >= 2
+                        ) {
+                            descriptoresPorTipo[descriptor.tipo].push(descriptor);
+                        }
                     });
+                });
+
+                ["and", "or"].forEach((tipo) => {
+                    this.generarInterseccionesCompartidas(
+                        tipo,
+                        descriptoresPorTipo[tipo],
+                        mapaGlobal,
+                        factorizador
+                    );
                 });
 
                 return [...mapaGlobal.values()]
@@ -2401,14 +2461,18 @@
                     .slice(0, CONFIG.MAX_CANDIDATOS_COMPARTIDOS);
             }
 
-            recolectarCandidatosNodo(
+            /**
+             * Recorre el AST y conserva descriptores compactos de cada nodo compuesto.
+             * El límite protege al navegador en expresiones patológicas muy grandes.
+             */
+            recolectarNodosCompuestos(
                 nodo,
                 indiceSalida,
-                mapa,
+                descriptores,
                 factorizador
             ) {
                 if (
-                    mapa.size
+                    descriptores.length
                     >= CONFIG.MAX_CANDIDATOS_COMPARTIDOS_POR_SALIDA
                 ) {
                     return;
@@ -2423,112 +2487,220 @@
                     return;
                 }
 
-                this.registrarCandidato(
-                    {
-                        tipoCoincidencia: "exacto",
-                        clave: `exacto:${factorizador.claveNodo(nodo)}`,
-                        nodo,
-                        contactos: factorizador.contarContactos(nodo)
-                    },
-                    indiceSalida,
-                    mapa
-                );
-
-                const maximo = Math.min(
-                    CONFIG.MAX_ELEMENTOS_FACTOR_COMPARTIDO,
-                    nodo.elementos.length
-                );
-
-                for (let cantidad = 2; cantidad <= maximo; cantidad += 1) {
-                    const disponibles =
-                        CONFIG.MAX_CANDIDATOS_COMPARTIDOS_POR_SALIDA
-                        - mapa.size;
-
-                    if (disponibles <= 0) {
-                        break;
-                    }
-
-                    const grupos = this.combinaciones(
-                        nodo.elementos,
-                        cantidad,
-                        disponibles
+                const elementosPorClave = new Map();
+                nodo.elementos.forEach((elemento) => {
+                    elementosPorClave.set(
+                        factorizador.claveNodo(elemento),
+                        elemento
                     );
+                });
 
-                    grupos.forEach((grupo) => {
-                        const nodoGrupo = nodo.tipo === "and"
-                            ? factorizador.crearAnd(grupo)
-                            : factorizador.crearOr(grupo);
-                        const clavesHijos = grupo
-                            .map((hijo) => factorizador.claveNodo(hijo))
-                            .sort();
-                        const clave = `subconjunto:${nodo.tipo}:${clavesHijos.join("|")}`;
-
-                        this.registrarCandidato(
-                            {
-                                tipoCoincidencia: "subconjunto",
-                                tipoPadre: nodo.tipo,
-                                clavesHijos,
-                                clave,
-                                nodo: nodoGrupo,
-                                contactos: factorizador.contarContactos(nodoGrupo)
-                            },
-                            indiceSalida,
-                            mapa
-                        );
-                    });
-                }
+                descriptores.push({
+                    nodo,
+                    tipo: nodo.tipo,
+                    indiceSalida,
+                    claveNodo: factorizador.claveNodo(nodo),
+                    clavesHijos: [...elementosPorClave.keys()].sort(),
+                    conjuntoHijos: new Set(elementosPorClave.keys()),
+                    elementosPorClave,
+                    contactos: factorizador.contarContactos(nodo)
+                });
 
                 nodo.elementos.forEach((elemento) => {
-                    this.recolectarCandidatosNodo(
+                    this.recolectarNodosCompuestos(
                         elemento,
                         indiceSalida,
-                        mapa,
+                        descriptores,
                         factorizador
                     );
                 });
             }
 
-            registrarCandidato(candidato, indiceSalida, mapa) {
+            /**
+             * Calcula intersecciones cerradas de conjuntos de hijos. Las nuevas
+             * intersecciones se vuelven a intersectar, por lo que también aparecen
+             * factores comunes a tres o más salidas aunque cada par tenga elementos
+             * adicionales diferentes.
+             */
+            generarInterseccionesCompartidas(
+                tipo,
+                descriptores,
+                mapaGlobal,
+                factorizador
+            ) {
+                if (descriptores.length < 2) {
+                    return;
+                }
+
+                const mapaConjuntos = new Map();
+
+                descriptores.forEach((descriptor) => {
+                    const clave = descriptor.clavesHijos.join("\u001f");
+
+                    if (!mapaConjuntos.has(clave)) {
+                        mapaConjuntos.set(clave, {
+                            claves: [...descriptor.clavesHijos],
+                            salidasSoporte: new Set()
+                        });
+                    }
+
+                    mapaConjuntos.get(clave).salidasSoporte.add(
+                        descriptor.indiceSalida
+                    );
+                });
+
+                const conjuntos = [...mapaConjuntos.values()];
+                let indiceActual = 0;
+                let paresEvaluados = 0;
+                let limiteParesAlcanzado = false;
+
+                while (
+                    indiceActual < conjuntos.length
+                    && mapaConjuntos.size < CONFIG.MAX_INTERSECCIONES_COMPARTIDAS
+                    && !limiteParesAlcanzado
+                ) {
+                    const actual = conjuntos[indiceActual];
+
+                    for (let indice = 0; indice < indiceActual; indice += 1) {
+                        const otro = conjuntos[indice];
+                        const salidasOrigen = new Set([
+                            ...actual.salidasSoporte,
+                            ...otro.salidasSoporte
+                        ]);
+
+                        // Intersectar dos conjuntos exclusivos de la misma salida
+                        // no aporta un factor inter-salida que no pueda descubrirse
+                        // directamente al compararlo con otra salida.
+                        if (salidasOrigen.size < 2) {
+                            continue;
+                        }
+
+                        paresEvaluados += 1;
+                        if (
+                            paresEvaluados
+                            > CONFIG.MAX_PARES_INTERSECCION_COMPARTIDA
+                        ) {
+                            limiteParesAlcanzado = true;
+                            break;
+                        }
+
+                        const interseccion = this.intersectarClaves(
+                            actual.claves,
+                            otro.claves
+                        );
+
+                        if (interseccion.length < 2) {
+                            continue;
+                        }
+
+                        const claveInterseccion = interseccion.join("\u001f");
+
+                        if (mapaConjuntos.has(claveInterseccion)) {
+                            continue;
+                        }
+
+                        const salidasSoporte = this.obtenerSalidasSoporte(
+                            interseccion,
+                            descriptores
+                        );
+
+                        if (salidasSoporte.size < 2) {
+                            continue;
+                        }
+
+                        const nuevo = {
+                            claves: interseccion,
+                            salidasSoporte
+                        };
+                        mapaConjuntos.set(claveInterseccion, nuevo);
+                        conjuntos.push(nuevo);
+
+                        if (
+                            mapaConjuntos.size
+                            >= CONFIG.MAX_INTERSECCIONES_COMPARTIDAS
+                        ) {
+                            break;
+                        }
+                    }
+
+                    indiceActual += 1;
+                }
+
+                conjuntos.forEach((entrada) => {
+                    const clavesHijos = entrada.claves;
+
+                    if (
+                        clavesHijos.length < 2
+                        || entrada.salidasSoporte.size < 2
+                    ) {
+                        return;
+                    }
+
+                    const representante = descriptores.find((descriptor) => {
+                        return clavesHijos.every((clave) => {
+                            return descriptor.conjuntoHijos.has(clave);
+                        });
+                    });
+
+                    if (!representante) {
+                        return;
+                    }
+
+                    const elementos = clavesHijos.map((clave) => {
+                        return representante.elementosPorClave.get(clave);
+                    });
+                    const nodo = tipo === "and"
+                        ? factorizador.crearAnd(elementos)
+                        : factorizador.crearOr(elementos);
+                    const clave = `subconjunto:${tipo}:${clavesHijos.join("|")}`;
+
+                    entrada.salidasSoporte.forEach((indiceSalida) => {
+                        this.registrarCandidatoGlobal(
+                            mapaGlobal,
+                            {
+                                tipoCoincidencia: "subconjunto",
+                                tipoPadre: tipo,
+                                clavesHijos,
+                                clave,
+                                nodo,
+                                contactos: factorizador.contarContactos(nodo)
+                            },
+                            indiceSalida
+                        );
+                    });
+                });
+            }
+
+            obtenerSalidasSoporte(clavesHijos, descriptores) {
+                const salidas = new Set();
+
+                descriptores.forEach((descriptor) => {
+                    if (
+                        clavesHijos.every((clave) => {
+                            return descriptor.conjuntoHijos.has(clave);
+                        })
+                    ) {
+                        salidas.add(descriptor.indiceSalida);
+                    }
+                });
+
+                return salidas;
+            }
+
+            intersectarClaves(primero, segundo) {
+                const conjuntoSegundo = new Set(segundo);
+                return primero.filter((clave) => conjuntoSegundo.has(clave));
+            }
+
+            registrarCandidatoGlobal(mapa, candidato, indiceSalida) {
                 if (!mapa.has(candidato.clave)) {
                     mapa.set(candidato.clave, {
                         ...candidato,
                         salidas: new Set()
                     });
                 }
+
                 mapa.get(candidato.clave).salidas.add(indiceSalida);
-            }
-
-            combinaciones(elementos, cantidad, limite) {
-                const resultado = [];
-                const actual = [];
-
-                const generar = (inicio) => {
-                    if (resultado.length >= limite) {
-                        return;
-                    }
-
-                    if (actual.length === cantidad) {
-                        resultado.push([...actual]);
-                        return;
-                    }
-
-                    for (
-                        let indice = inicio;
-                        indice <= elementos.length - (cantidad - actual.length);
-                        indice += 1
-                    ) {
-                        actual.push(elementos[indice]);
-                        generar(indice + 1);
-                        actual.pop();
-
-                        if (resultado.length >= limite) {
-                            break;
-                        }
-                    }
-                };
-
-                generar(0);
-                return resultado;
             }
 
             reemplazarCandidato(nodo, candidato, reemplazo, factorizador) {
@@ -4017,7 +4189,13 @@
                 resultado.verificacion = null;
             });
 
-            const auxiliares = new OptimizadorCompartidoSalidas().optimizar(resultadosSalidas);
+            const auxiliares = new OptimizadorCompartidoSalidas().optimizar(
+                resultadosSalidas,
+                [
+                    ...ESTADO_APP.etiquetasEntradas,
+                    ...ESTADO_APP.etiquetasSalidas
+                ]
+            );
 
             resultadosSalidas.forEach((resultado) => {
                 resultado.verificacion = verificador.verificarAst(
