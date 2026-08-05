@@ -2,14 +2,14 @@
 
 **Boolean Table Minimizer and Ladder Logic Generator for PLC applications**
 
-[![Version](https://img.shields.io/badge/version-V4.0-blue.svg)](#version)
+[![Version](https://img.shields.io/badge/version-V4.1-blue.svg)](#version)
 [![HTML5](https://img.shields.io/badge/HTML5-single--file-orange.svg)](#architecture)
 [![Offline](https://img.shields.io/badge/offline-supported-success.svg)](#architecture)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
 
-Ladder Logic Reducer is a single-file HTML5 application designed to capture or import Boolean condition tables, minimize each output independently, optimize the resulting logic for PLC Ladder representation, verify functional equivalence, and export the results in several useful formats.
+Ladder Logic Reducer is a single-file HTML5 application designed to capture or import Boolean condition tables, minimize each output independently, optimize the resulting logic for practical PLC Ladder implementation, detect reusable logic shared across outputs, verify functional equivalence, and export the results in several useful formats.
 
-The application is focused on **industrial rule tables** rather than only conventional strict truth tables. Version **V4.0** uses the **Flexible Industrial** interpretation.
+The application is focused on **industrial rule tables** rather than only conventional strict truth tables. Version **V4.1** uses the **Flexible Industrial** interpretation.
 
 ## 🌐 Live Application
 
@@ -37,7 +37,10 @@ The application is focused on **industrial rule tables** rather than only conven
 - Verified bounded heuristic minimization when exact search would exceed configured complexity limits.
 - Boolean absorption and redundancy elimination.
 - Multi-level expression factorization oriented toward Ladder implementation.
-- Ladder cost evaluation based on contacts, branches, expression depth, and terms.
+- **Shared-logic optimization across multiple outputs using auxiliary relays.**
+- **Complete common-factor detection across AND/OR networks without a fixed five-contact factor limit.**
+- **Automatic auxiliary-relay naming that avoids collisions with existing input and output signal names.**
+- Ladder cost evaluation based on contacts, branches, expression depth, terms, and auxiliary-relay cost.
 - Independent functional-equivalence verification.
 - Minimized Boolean expressions.
 - Simplified ASCII Ladder representation.
@@ -52,7 +55,7 @@ The application is focused on **industrial rule tables** rather than only conven
 
 ## 📊 Application Limits
 
-| Parameter | V4.0 Limit |
+| Parameter | V4.1 Limit |
 |---|---:|
 | Maximum inputs | **40** |
 | Maximum outputs | **20** |
@@ -65,14 +68,19 @@ The application is focused on **industrial rule tables** rather than only conven
 | Prime-implicant limit | 2,400 |
 | Petrick product limit | 50,000 |
 | Maximum shared auxiliary relays configured | 12 |
+| Shared-factor contact count | **No fixed five-contact limit** |
+| Maximum tracked shared intersections | 6,000 |
+| Maximum shared-intersection pair evaluations | 200,000 |
 
 > **Important:** the application supports up to **40 inputs**, but this does **not** mean that exact global minimization is guaranteed for every 40-input problem. Exact Quine–McCluskey/Petrick minimization is attempted only for functions within the configured exact-search limits. Larger or combinatorially expensive problems use the verified industrial heuristic.
+
+The limits used by the shared-logic optimizer are safeguards against pathological combinatorial growth. They are not equivalent to a fixed maximum number of contacts in an auxiliary factor.
 
 ---
 
 ## 🧠 Flexible Industrial Interpretation
 
-Version V4.0 intentionally uses the **Flexible Industrial** interpretation.
+Version V4.1 intentionally uses the **Flexible Industrial** interpretation.
 
 For each output:
 
@@ -147,6 +155,29 @@ The input and output mnemonic letters must be different.
 
 When a table with headers is imported, the application can preserve the imported signal names when they are valid and unique.
 
+### Auxiliary relay names
+
+Shared expressions are represented by auxiliary relays using the `M` prefix by default:
+
+```text
+M1
+M2
+M3
+...
+```
+
+V4.1 reserves all existing input and output names before assigning auxiliary relays.
+
+For example, if a table already contains signals named:
+
+```text
+M1 M2 M3
+```
+
+the optimizer will not reuse those names. It automatically selects the next available auxiliary relay name.
+
+This prevents accidental name collisions between physical/logical signals and generated internal memories.
+
 ---
 
 ## 📥 Table Import
@@ -176,7 +207,7 @@ The application validates row length, signal names, input values, and output val
 
 ## ⚙️ Minimization Strategy
 
-V4.0 uses two minimization paths.
+V4.1 uses two minimization paths.
 
 ### 1. Exact minimization
 
@@ -194,7 +225,7 @@ The exact method is bounded by internal safeguards to prevent uncontrolled combi
 
 ### 2. Verified industrial heuristic
 
-If the exact method is not applicable or exceeds its internal complexity limits, V4.0 switches to a bounded heuristic based on:
+If the exact method is not applicable or exceeds its internal complexity limits, V4.1 switches to a bounded heuristic based on:
 
 1. safe Boolean cube expansion;
 2. valid cube combinations;
@@ -265,9 +296,88 @@ This structure maps naturally to Ladder as:
 
 ---
 
+## 🔗 Shared Logic and Auxiliary Relay Optimization
+
+V4.1 adds a significantly improved optimization stage after individual output minimization.
+
+The application analyzes the factorized expressions of all outputs and searches for logic that can be evaluated once and reused through an auxiliary relay.
+
+### Why this matters in PLC Ladder
+
+Consider three independently minimized outputs that all contain:
+
+```text
+¬I5 · ¬I6 · ¬I7 · ¬I8 · I10 · I11
+```
+
+Without shared optimization, those six contacts may be duplicated in every output rung.
+
+V4.1 can create:
+
+```text
+M1 = ¬I5 · ¬I6 · ¬I7 · ¬I8 · I10 · I11
+```
+
+and then use `M1` in the affected outputs.
+
+Conceptually:
+
+```text
+M1 = COMMON_CONDITION
+
+O1 = M1 · CONDITION_O1
+O2 = M1 · CONDITION_O2
+O3 = M1 · CONDITION_O3
+```
+
+This can reduce:
+
+- duplicated contacts;
+- Ladder program size;
+- visual complexity;
+- repeated condition evaluation;
+- maintenance effort.
+
+### Complete common factors
+
+Previous shared-factor logic was constrained by candidate subset enumeration and a fixed maximum factor size.
+
+V4.1 removes that fixed factor-size restriction.
+
+Instead of enumerating every possible subset up to a hard contact count, the optimizer:
+
+1. collects composite AND/OR nodes from each output expression;
+2. represents their child expressions as sets;
+3. computes shared intersections between expressions from different outputs;
+4. recursively closes those intersections so factors common to three or more outputs can be discovered;
+5. evaluates each candidate using the Ladder cost model;
+6. creates an auxiliary relay only when the total Ladder cost is reduced.
+
+This allows practical common factors containing six, ten, or more contacts to be detected when they exist in the expression.
+
+### Cost-controlled memory creation
+
+The application does **not** create an auxiliary relay merely because a repeated expression exists.
+
+For each candidate it compares:
+
+```text
+Cost before auxiliary relay
+vs.
+Cost after replacement
++ Cost of auxiliary rung
++ Auxiliary-relay penalty
+```
+
+The memory is accepted only when the calculated result is beneficial.
+
+This avoids generating unnecessary internal bits that make the PLC program longer rather than shorter.
+
+---
+
 ## 📐 Ladder Cost Model
 
-V4.0 evaluates candidate factorizations using a Ladder-oriented cost model.
+V4.1 evaluates candidate factorizations and shared auxiliary relays using a Ladder-oriented cost model.
 
 The configured cost model considers:
 
@@ -275,9 +385,11 @@ The configured cost model considers:
 - parallel branches;
 - expression depth;
 - number of terms;
-- auxiliary relay usage where applicable.
+- auxiliary relay usage.
 
 This means the preferred result is selected not only by Boolean-expression length, but also by its practical Ladder structure.
+
+The shared-logic optimizer evaluates the **complete program cost**, including the new auxiliary rung and the reduced output rungs.
 
 ---
 
@@ -298,23 +410,29 @@ The verifier supports:
 - auxiliary-relay definitions;
 - counterexample detection.
 
-This verification is particularly important when the scalable heuristic path is used.
+Generated auxiliary relays are included in equivalence verification, so the final output expressions are checked using the actual auxiliary definitions.
+
+This verification is particularly important when the scalable heuristic path or shared-logic optimization is used.
 
 ---
 
 ## 🖥️ Generated Results
 
-After analysis, V4.0 displays:
+After analysis, V4.1 displays:
 
 ### Minimized Boolean Expressions
 
-The final Boolean expression for every output.
+The final Boolean expression for every generated auxiliary relay and output.
 
 Example:
 
 ```text
-O1 = ¬I10 · (I2 + I4 + I1 · ¬I5)
+M1 = ¬I5 · ¬I6 · ¬I7 · ¬I8 · I10 · I11
+O1 = I1 · ¬I2 · M1
+O2 = (I2 + I3) · M1
 ```
+
+Auxiliary definitions are displayed before the outputs that use them.
 
 ### Simplified ASCII Ladder
 
@@ -323,29 +441,34 @@ A text representation using series and parallel structures.
 Example:
 
 ```text
+// ===== M1 =====
 SERIES
-  [/I10]
-  PARALLEL
-    Branch 1
-      [I2]
-    Branch 2
-      [I4]
-    Branch 3
-      SERIES
-        [I1]
-        [/I5]
-  (O1)
+  [/I5]
+  [/I6]
+  [/I7]
+  [/I8]
+  [I10]
+  [I11]
+  COIL ( M1 )
 ```
 
 ### Visual Ladder
 
 The same logical structure is rendered graphically in the browser as SVG Ladder rungs.
 
+Generated auxiliary-relay rungs are displayed together with the final output rungs.
+
 Input contacts are kept ordered according to the original input-variable order wherever the expression structure allows it.
 
 ### Consistency and I/O Mapping
 
-The result panel also reports analysis status and signal mapping.
+The result panel reports:
+
+- validation warnings;
+- minimization method used for each output;
+- equivalence-verification state;
+- generated auxiliary relays;
+- input/output mapping.
 
 ---
 
@@ -370,6 +493,7 @@ Exports an analysis report containing:
 - minimization method used for each output;
 - equivalence-verification status;
 - Boolean expressions;
+- generated auxiliary-relay expressions;
 - ASCII Ladder.
 
 Default filename:
@@ -394,8 +518,12 @@ The generated LD file includes:
 - I/O list;
 - generated input aliases;
 - generated output aliases;
+- generated auxiliary-relay rungs;
+- output Ladder rungs;
 - Ladder program structure;
 - comments preserving the original signal names for traceability.
+
+Auxiliary-relay definitions are emitted before output rungs that reference them.
 
 > The `.ld` generator is implemented as an LDmicro-style textual exporter. If a specific LDmicro release requires a different textual convention, the exporter may need to be adapted to that release.
 
@@ -418,6 +546,8 @@ index.html
 ├── scalable heuristic minimizer
 ├── Ladder cost calculator
 ├── expression factorizer
+├── cross-output shared-logic optimizer
+├── collision-safe auxiliary-relay allocator
 ├── equivalence verifier
 ├── visual Ladder renderer
 ├── ASCII Ladder renderer
@@ -462,8 +592,9 @@ Open:
 4. Enter or paste the logic table.
 5. Click **Minimize and generate Ladder**.
 6. Review the minimized Boolean expressions.
-7. Review the visual or ASCII Ladder representation.
-8. Export the required `.txt`, `.ld`, or `.tsv` file.
+7. Review any generated auxiliary relays.
+8. Review the visual or ASCII Ladder representation.
+9. Export the required `.txt`, `.ld`, or `.tsv` file.
 
 ---
 
@@ -489,7 +620,17 @@ Boolean minimization
         └── Verified scalable heuristic
         │
         ▼
-Ladder-oriented factorization
+Per-output Ladder-oriented factorization
+        │
+        ▼
+Cross-output shared-factor detection
+        │
+        ▼
+Evaluate auxiliary-relay cost savings
+        │
+        ├── No saving → keep original expressions
+        │
+        └── Saving found → create collision-safe Mx relay
         │
         ▼
 Functional-equivalence verification
@@ -497,7 +638,8 @@ Functional-equivalence verification
         ▼
 Generate Ladder
         │
-        ├── Boolean expression
+        ├── Boolean expressions
+        ├── Auxiliary relay rungs
         ├── ASCII Ladder
         ├── SVG visual Ladder
         ├── TXT report
@@ -514,7 +656,7 @@ A `0` in an output cell does not globally forbid that input region.
 
 Only rows with output `1` define the ON region used for that output.
 
-This distinction is intentional and is central to V4.0 behavior.
+This distinction is intentional and is central to V4.1 behavior.
 
 ### Maximum inputs and exact minimization are different limits
 
@@ -526,11 +668,27 @@ The application supports **40 input columns**, but exact minimization is limited
 
 Outputs do not use `X`.
 
+### Shared factors are not limited to five contacts
+
+V4.1 does not impose the previous fixed five-element ceiling on cross-output shared factors.
+
+The optimizer instead uses bounded set-intersection analysis and overall Ladder-cost comparison.
+
+### Auxiliary relays are generated only when beneficial
+
+A common expression does not automatically become a memory bit.
+
+The optimizer creates a relay only when the complete Ladder-cost model predicts a net reduction.
+
+### Auxiliary names are protected
+
+Generated `M` relay names are checked against existing input and output labels before use.
+
 ### Large problems
 
-Boolean minimization is computationally expensive. A table within the UI limits can still represent a very large Boolean search space.
+Boolean minimization and cross-output optimization can be computationally expensive. A table within the UI limits can still represent a very large Boolean search space.
 
-For this reason, V4.0 uses bounded exact and heuristic algorithms rather than attempting unlimited exhaustive computation.
+For this reason, V4.1 uses bounded exact, heuristic, intersection, and verification algorithms rather than attempting unlimited exhaustive computation.
 
 ---
 
@@ -544,11 +702,13 @@ The application includes:
 
 Imported technical signal names are preserved and are not translated.
 
+The V4.1 technical notes in all three languages also explain that complete common factors may be extracted across outputs when doing so reduces total Ladder cost.
+
 ---
 
 ## 🧾 Version
 
-### V4.0
+### V4.1
 
 Key characteristics of this version:
 
@@ -559,11 +719,27 @@ Key characteristics of this version:
 - Exact Quine–McCluskey + Petrick minimization for manageable functions up to 12 inputs.
 - Verified heuristic path for larger or combinatorially expensive functions.
 - Ladder-oriented multi-level factorization.
-- Independent equivalence verification.
+- **Improved cross-output shared-factor optimization.**
+- **Complete AND/OR common-factor intersection detection.**
+- **No fixed five-contact limit for shared auxiliary factors.**
+- **Auxiliary relays are created only when they reduce total Ladder cost.**
+- **Collision-safe automatic `M1`, `M2`, ... relay naming.**
+- Independent equivalence verification including auxiliary definitions.
 - Visual SVG Ladder generation.
 - ASCII Ladder generation.
 - TXT, TSV, and LDmicro-style LD export.
 - English / Spanish / Italian interface.
+
+### V4.0
+
+Previous major version characteristics:
+
+- Flexible Industrial interpretation.
+- Per-output minimization.
+- Exact and verified heuristic minimization paths.
+- Ladder-oriented factorization.
+- Initial shared auxiliary-relay optimizer.
+- Shared-factor subset generation was bounded by a fixed maximum candidate factor size.
 
 ---
 
